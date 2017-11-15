@@ -18,3 +18,5 @@
         而Websocket是一次持久化连接,只需要一次HTTP握手,所以说整个通讯过程是建立在一次连接/状态中,在这过程中服务器可以主动给
         客户端发消息.
 ```
+
+[参考资料](https://github.com/jaywcjlove/mysql-tutorial/blob/master/README.md)
