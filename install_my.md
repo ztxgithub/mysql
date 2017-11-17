@@ -63,3 +63,16 @@
     Reload privilege tables now? [Y/n]  y
     # 解释：想要重新加载权限吗？输入 y 表示愿意。
 ```
+
+- 安装mysql命令行工具　mycli(https://github.com/dbcli/mycli)
+
+```shell
+    1.前提条件是先安装pip
+        > yum -y install epel-release (安装扩展源EPEL,是由 Fedora 社区打造，
+                                        为 RHEL 及衍生发行版如 CentOS、Scientific Linux 等提供高质量软件包的项目)
+                                        
+        > yum -y install python-pip
+        
+    2. > pip install mycli
+    3.
+```
