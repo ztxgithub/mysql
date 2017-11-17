@@ -43,3 +43,19 @@
 ```
 
 [参考资料](https://github.com/jaywcjlove/mysql-tutorial/blob/master/README.md)
+
+# 数据库技术构成
+
+```shell
+    数据库系统包括数据库,数据库管理系统,数据库应用程序3个部分构成
+    数据库: 用于存储数据的地方
+    数据库管理系统: 用户管理数据库的软件
+    数据库应用程序（Database Application）：为了提高数据库系统的处理能力所使用的管理数据库的软件补充
+```
+
+## SQL语言
+
+```shell
+    SQL,(Structured Query Language)即结构化查询语言,数据库管理系统专门通过SQL语言来管理数据库中的数据,与数据库通信.
+    SQL不是某个特定数据库供应商专有的语言.几乎所有重要的 DBMS都支持SQL
+```
