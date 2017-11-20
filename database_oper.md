@@ -59,3 +59,48 @@
     选择test数据库
      
 ```
+
+- 创建数据库
+
+```shell
+
+    1.创建一个数据库,这个数据库一定不存在
+        mysql> create database test;
+
+    2.更加全面的方法
+        mysql> create database if not exists test;
+     
+```
+
+- 删除数据库
+
+```shell
+
+    1.删除一个数据库,这个数据库一定存在
+        mysql> drop database test;
+
+    2.更加全面的方法
+        mysql>  drop database if exists test;
+     
+```
+
+- 设置存储引擎
+
+```shell
+
+    在my.cnf 配置文件中设置你需要的存储引擎,这个参数放在 [mysqld] 这个字段下面的 default_storage_engine 参数值,
+    例如下面配置的片段
+
+        [mysqld]
+            default_storage_engine=CSV
+            
+    在创建表的时候，对表设置存储引擎，例如：
+        
+        CREATE TABLE `user` (
+          `id`     int(100) unsigned NOT NULL AUTO_INCREMENT,
+          `name`   varchar(32) NOT NULL DEFAULT '' COMMENT '姓名',
+          `mobile` varchar(20) NOT NULL DEFAULT '' COMMENT '手机',
+          PRIMARY KEY (`id`)
+        )ENGINE=InnoDB;
+     
+```
