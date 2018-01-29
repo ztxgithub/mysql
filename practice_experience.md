@@ -37,6 +37,13 @@
                                     
                                    
                 (4) 持久性：一旦事务被提交，所做的修改会永久的保存到数据库中。
+                
+    6.MySQL体系结构
+        
+        
+        客户端(C api)  --->  MySQL服务层(连接管理器，查询解析，查询缓存，查询优化器)  ---> 存储引擎层
+        
+        mysql定义了一系列的存储引擎接口(innodb,myisam),插件式存储引擎相当灵活。
                                     
 ```
 
@@ -110,16 +117,50 @@
             net.ipv4.tcp_max_syn_backlog = 65535
             
             加快tcp socket的回收
-            net.ipv4.tcp_fin_timeout = 10
+        (2) net.ipv4.tcp_fin_timeout = 10
             net.ipv4.tcp_tw_reuse = 1
             net.ipv4.tcp_tw_recycle = 1 ((服务器不建议开启 tcp_tw_recycle 快速回收，会导致大局域网用户访问失败))
             
-            net.core.rmem_default = 87380  (表示套接字接收缓冲区大小的缺省值)(单位字节)
+        (3) net.core.rmem_default = 87380  (表示套接字接收缓冲区大小的缺省值)(单位字节)
             net.core.rmem_max = 16777216   (表示套接字接收缓冲区大小的最大值)(单位字节)
             net.core.wmem_default = 87380  (表示套接字发送缓冲区大小的缺省值)(单位字节)
             net.core.wmem_max = 16777216   (表示套接字发送缓冲区大小的最大值)(单位字节)
+            
+        (4) net.ipv4.tcp_keepalive_time = 120
+            net.ipv4.tcp_keepalive_intvl = 30
+            net.ipv4.tcp_keepalive_probes = 3
+            
+        (5) kernel.shmmax = 4294967295  (byte)
+            vm.swappiness = 0  (0表示最大限度使用物理内存,然后才是 swap空间)
+            
+        (6  /etc/security/limit.conf
+            * soft nofile 65535
+            * hard nofile 65535
+            
+        (7) 磁盘调度策略(/sys/block/磁盘存储设备名/queue/scheduler) 例如(/sys/block/sda/queue/scheduler)
+            
+            > cat /sys/block/sda/queue/scheduler
+            结果：
+                noop deadline [cfq]
+            
+            noop(电梯式调度策略):实现了一个FIFO队列，当有一个新的请求到来时，它将请求合并到最近的请求之后，以此保证请求同一介质，
+                               NOOP倾向饿死读利于写，因此NOOP对于闪存，RAM及嵌入式系统是最好的选择。
+                               
+            deadline(截止时间调度策略):Daadline确保在一个截止时间内进行服务请求，这个截止时间是可调整的，而默认读期限是短于写期限的。
+                                    Deadline对数据库类应用是最好的选择。
+                                    
+            改变磁盘调度策略：
+                echo deadline > /sys/block/sda/queue/scheduler
+               
         
-                      
+        (8) 文件系统对性能的影响 EXT3/4系统的挂载(/etc/fstab)       
+               /dev/sda1/ext4 noatime,nodiratime,data=writeback 1 1
+               
+               在 Linux 下面挂载文件系统的时候设置 noatime 可以显著提高文件系统的性能。默认情况下，
+               Linux ext2/ext3 文件系统在文件被访问、创建、修改等的时候记录下了文件的一些时间戳，比如：文件创建时间、
+               最近一次修改时间和最近一次访问时间。因为系统运行的时候要访问大量文件，如果能减少一些动作（比如减少时间戳的记录次数等）
+               将会显著提高磁盘 IO 的效率、提升文件系统的性能。Linux 提供了 noatime 这个参数来禁止记录最近一次访问时间戳
+               
             
         
         
