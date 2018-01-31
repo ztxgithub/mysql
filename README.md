@@ -96,11 +96,12 @@
                 tb_demo.MYD，存储数据。
                 tb_demo.MYI，存储索引。
              
-             > create table my_isam(id int, vaule varchar(10))engine=myisam;
+             mysql > create table my_isam(id int, vaule varchar(10))engine=myisam;
                 
             MyISAM表无法处理事务，这就意味着有事务处理需求的表，不能使用MyISAM存储引擎。MyISAM存储引擎特别适合在以下几种情况下使用：
             
-                1.选择密集型的表.MyISAM存储引擎在筛选大量数据时非常迅速,这是它最突出的优点。
+                1.选择密集型的表.MyISAM存储引擎在筛选大量数据时非常迅速,这是它最突出的优点，MyISAM管理非事务表。
+                  它提供高速存储和检索，以及全文搜索能力。如果应用中需要执行大量的SELECT查询，那么MyISAM是更好的选择。
                 2.插入密集型的表.MyISAM的并发插入特性允许同时选择和插入数据.例如:MyISAM存储引擎很适合管理邮件或Web服务器日志数据.
                 
             MyISAM用于系统表，临时表(在排序，分组等操作中，当数量超过一定大小之后，有查询优化器建立的临时表)
@@ -108,6 +109,16 @@
             特性：
                 (1) 并发性和锁级别：表级锁，对于数据库进行写操作会对作用的表进行加锁。
                 (2) 表损坏修复：MyISAM可以对任意意外关闭而损坏表进行修复。这里的修复不是进行事务的恢复，MyISAM不支持处理事务
-                        > check table table_name (进行表的检查)
-                        > repair table table_name (进行表的恢复)
+                        mysql > check table table_name (进行表的检查)
+                        mysql > repair table table_name (进行表的恢复)
+                (3) 支持的索引类型
+                        支持全文索引，但不是事务安全的，而且不支持外键
+                (4) MyISAM表支持数据压缩
+                        > myisampack -b -f my_isam.MYI(文件名)
+                        
+                        --backup -b  使用tbl_name.OLD备份数据文件
+                        --force  -f  ：产生一个压缩的表，即使它比原始表大，
+                                       或如果以前调用myisampack的中间文件存在(myisampack压缩表时在数据库目录中创建一个名为
+                                       tbl_name.TMD的中间文件。如果杀掉myisampack，.TMD文件会被删除）。通常情况，
+                                       如果myisampack发现tbl_name.TMD存在则退出并提示错误。用--force，myisampack则一定压缩表。
 ```
