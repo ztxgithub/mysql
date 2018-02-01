@@ -85,6 +85,27 @@
                 (6)从5.7开始innodb存储引擎成为默认的存储引擎。
             一般来说，如果需要事务支持，并且有较高的并发读取频率，InnoDB是不错的选择,其索引和数据被缓存在内存中
             
+            mysql> show variables like 'innodb_file_per_table';
+            innodb_file_per_table:on 为每一个逻辑表建立独立的表空间 def_innodb_use.frm文件和def_innodb_use.ibd(表数据存储文件)
+            innodb_file_per_table:off 所有逻辑表的数据保存在ibdataX文件中(其中X代表序号1,2,3....)
+            
+            设置innodb_file_per_table参数的值
+                mysql> set global innodb_file_per_table=off;
+            
+            创建一张innodb存储引擎的表
+                mysql> create table def_innodb_use(id int,des varchar(10)) engine='innodb';
+                
+            系统表空间和独立表空间的区别
+                系统表空间缺点：
+                 (1)如果mysql中的参数innodb_file_per_table设置为off,则默认所有的逻辑表的数据会存储在系统表空间中(ibdataX文件),
+                     这时由于磁盘空间不足，删除一些逻辑的日志类的逻辑表或者老的数据表，这时系统表空间的大小并不会减小，需要很复杂的操作，
+                     无法简单的收缩文件大小。
+                 (2) 系统表空间会产生IO瓶颈： 因为所有的逻辑表都是往一个系统表空间文件中写数据。
+                    
+                使用独立表空间可以通过optimize table 命令收缩系统文件，不需要重启mysql服务
+                使用独立表空间可以达到多个逻辑表同时操作对应的存储文件。
+                
+            
         2.MyISAM(表级锁)
             
             MyISAM是MySQL5.5之前的版本默认的存储引擎。
@@ -103,6 +124,7 @@
                 1.选择密集型的表.MyISAM存储引擎在筛选大量数据时非常迅速,这是它最突出的优点，MyISAM管理非事务表。
                   它提供高速存储和检索，以及全文搜索能力。如果应用中需要执行大量的SELECT查询，那么MyISAM是更好的选择。
                 2.插入密集型的表.MyISAM的并发插入特性允许同时选择和插入数据.例如:MyISAM存储引擎很适合管理邮件或Web服务器日志数据.
+                3.只读应用（MyISAM支持压缩功能）
                 
             MyISAM用于系统表，临时表(在排序，分组等操作中，当数量超过一定大小之后，有查询优化器建立的临时表)
             
@@ -116,9 +138,15 @@
                 (4) MyISAM表支持数据压缩
                         > myisampack -b -f my_isam.MYI(文件名)
                         
-                        --backup -b  使用tbl_name.OLD备份数据文件
+                        --backup -b  产生tbl_name.OLD备份数据文件
                         --force  -f  ：产生一个压缩的表，即使它比原始表大，
                                        或如果以前调用myisampack的中间文件存在(myisampack压缩表时在数据库目录中创建一个名为
                                        tbl_name.TMD的中间文件。如果杀掉myisampack，.TMD文件会被删除）。通常情况，
                                        如果myisampack发现tbl_name.TMD存在则退出并提示错误。用--force，myisampack则一定压缩表。
+                        
+                        这个时候my_isam.MYI文件是压缩后的文件,它只具有只读操作,不能对其进行插入和更新
+                        
+            限制:
+                (1) 在MySQL版本小于5.0时,MyISAM存储引擎下的单表默认最大为4GB,如需要建立大表要修改MAX_Rows和AVG_ROW_LENGTH
+                    MySQL版本大于5.0时，表默认支持256TB
 ```
