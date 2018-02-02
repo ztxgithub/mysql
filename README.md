@@ -42,6 +42,13 @@
     在实践中,代理键值通常是个自动递增的数字,在MySQL里用一个标记有AUTO_INCREMENT的字段.
 ```
 
+- 什么是锁
+
+```shell
+
+    
+```
+
 [参考资料](https://github.com/jaywcjlove/mysql-tutorial/blob/master/README.md)
 
 # 数据库技术构成
@@ -105,6 +112,25 @@
                 使用独立表空间可以通过optimize table 命令收缩系统文件，不需要重启mysql服务
                 使用独立表空间可以达到多个逻辑表同时操作对应的存储文件。
                 
+             所以最好对innodb使用独立表空间(innodb_file_per_table置为on)
+             
+             表转移步骤(将系统表空间转为独立表空间)
+                (1) 使用mysqldump导出所有数据库表数据(要将存储事件触发器一起导出)
+                (2) 停止MySQL服务，修改参数，并删除innodb相关的文件
+                (3) 重启MySQL服务，重建Inoodb系统表空间
+                (4) 重新导入数据
+                
+             tb_demo.frm，存储表定义这个文件是MySQL服务层产生的文件，它是与存储引擎无关的，
+             
+             特性：
+                (1) Redo Log:用于事务的持久性（存的是已提交的事务），与MySQL系统变量innodb_log_buffer_size=16777216有关，
+                             代表存储Redo Log大小，最多每隔1秒会将Redo Log文件更新到磁盘中，
+                             所以innodb_log_buffer_size大小不用太大。
+                (2) Undo Log:用于未提交事务提供回滚
+                
+                             在数据目录下有ib_logfileX(序号X：0,1,2.....)的个数跟系统变量innodb_log_files_in_group值有关，
+                             如果innodb_log_files_in_group值为2，则在数据目录下有ib_logfile0和ib_logfile1
+                             
             
         2.MyISAM(表级锁)
             
