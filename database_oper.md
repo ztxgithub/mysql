@@ -104,3 +104,21 @@
         )ENGINE=InnoDB;
      
 ```
+
+- 常见的命令
+
+```shell
+
+    1.查看某个表的信息
+        mysql> desc 表名
+        
+    2.插入数据
+        mysql> insert into 表名 values(xxx,xxx),(yyy,yyy);  //支持插入多条记录
+        
+    3.查看表的定义
+        mysql> show create table 表名
+        
+    4.查看innodb状态检查
+        mysql> show engine innodb status
+     
+```
