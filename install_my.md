@@ -2,6 +2,16 @@
 
 ```shell
     1.sudo apt-get install mysql-server mysql-client
+    
+    MySQL安装后的目录结构分析(此结构只针对于使用apt-get install 在线安装情况)：
+    
+          数据库存放目录：               /var/lib/mysql/
+    
+          相关配置文件存放目录：          /usr/share/mysql
+    
+          相关命令存放目录：             /usr/bin(mysqladmin mysqldump等命令)
+    
+          启动脚步存放目录：            /etc/rc.d/init.d/
 ```
 
 # Centos 安装mysql

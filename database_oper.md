@@ -120,5 +120,23 @@
         
     4.查看innodb状态检查
         mysql> show engine innodb status
+        
+    5.创建一张以存储引擎为csv的表
+        mysql> create table my_csv(id int not null,c1 varchar(10) not null,c2 char(10) not null) engine=csv;
+        
+    6.flush 命令 (mysql> flush flush_option ;)
+        (1) mysql> flush HOSTS;
+               主要是用来清空主机缓存表。如果你的某些主机改变IP地址，或如果你得到错误消息Host ... isblocked，你应该清空主机表。
+               当在连接MySQL服务器时，对一台mysql客户端主机有 max_connect_errors 错误连续不断地发生，
+               MySQL为了安全的需要将会阻止该主机进一步的连接请求。清空主机表允许主机再尝试连接
+               
+        (2) mysql> flush PRIVILEGES;
+                每当重新赋权后，为了以防万一，让新权限立即生效，从数据库授权表中重新装载权限到缓存中
+                
+        (3) mysql> flush tables;
+                关闭所有打开的表，同时该操作将会清空查询缓存中的内容,刷新缓存重新将表中的数据加载到缓存中。
+                
+    7.创建索引
+        mysql> create index 索引名 on 表名(列名);
      
 ```
