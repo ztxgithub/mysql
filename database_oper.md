@@ -102,6 +102,22 @@
           `mobile` varchar(20) NOT NULL DEFAULT '' COMMENT '手机',
           PRIMARY KEY (`id`)
         )ENGINE=InnoDB;
+        
+        AUTO_INCREMENT:代表自增列属性，这种自增属性列都要求是索引列
+        KEY：索引是 id 列
+      
+     
+```
+
+- 设置支持Federated存储引擎
+
+```shell
+
+    1.在my.cnf 配置文件中新加
+        federatred=1
+    2.重启mysql服务器
+        
+      
      
 ```
 
@@ -114,6 +130,7 @@
         
     2.插入数据
         mysql> insert into 表名 values(xxx,xxx),(yyy,yyy);  //支持插入多条记录
+        mysql> inser into 表名(列名1，列名2) values(xxxx,xxx);
         
     3.查看表的定义
         mysql> show create table 表名
@@ -121,13 +138,18 @@
     4.查看innodb状态检查
         mysql> show engine innodb status
         
-    5.创建一张以存储引擎为csv的表
-        mysql> create table my_csv(id int not null,c1 varchar(10) not null,c2 char(10) not null) engine=csv;
+    5.创建表
+        (1)创建一张以存储引擎为csv的表
+            mysql> create table my_csv(id int not null,c1 varchar(10) not null,c2 char(10) not null) engine=csv;
+            
+        (2)创建一张以存储引擎为federated的表
+            mysql> create table local_fed(id int, c1 varchar(10)) engine=federated connnection=
+                    'mysql://用户名:密码@远程服务器ip:远程服务器端口号/远程服务器数据库名/远程服务器表名'；
         
     6.flush 命令 (mysql> flush flush_option ;)
         (1) mysql> flush HOSTS;
                主要是用来清空主机缓存表。如果你的某些主机改变IP地址，或如果你得到错误消息Host ... isblocked，你应该清空主机表。
-               当在连接MySQL服务器时，对一台mysql客户端主机有 max_connect_errors 错误连续不断地发生，
+               当在连接MySQL服务器时，对一台mysql客户端主机有 max_connect_errors 个错误连续不断地发生，
                MySQL为了安全的需要将会阻止该主机进一步的连接请求。清空主机表允许主机再尝试连接
                
         (2) mysql> flush PRIVILEGES;
@@ -136,7 +158,15 @@
         (3) mysql> flush tables;
                 关闭所有打开的表，同时该操作将会清空查询缓存中的内容,刷新缓存重新将表中的数据加载到缓存中。
                 
-    7.创建索引
-        mysql> create index 索引名 on 表名(列名);
+    7.索引
+        mysql> create index 索引名 on 表名(列名); 使用了默认索引类型
+        mysql> create index 索引名 using btree on 表名(列名); 使用了BTree索引类型
+        mysql> show index from 表名；
+        
+    8.查看mysql系统变量
+        mysql> show variables like 'innodb_file_per_table';
+        
+    9.查看表的状态信息
+        mysql> show table status like '表名'；
      
 ```

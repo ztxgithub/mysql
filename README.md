@@ -204,4 +204,71 @@
                     
                 适用场景
                     (1):适合做 为数据交换 的中间表 数据->CSV文件->MYSQL数据目录
+                    
+        4.Archive存储引擎
+                Archive存储引擎会缓存所有的写，以zlib对插入的行进行压缩
+                
+                特点：
+                    (1) 以zlib对表数据进行压缩，磁盘I/O更少(更加节约存储空间)
+                    (2) 物理存储形式
+                            table_name.ARZ 文件存储表内容
+                            table_name.frm 文件存储表结构信息
+                    (3) 只支持insert和select操作
+                    (4) 只允许在 自增ID列 加索引
+                    
+                适用场景：
+                    (1) :比较适用于 日志和数据采集应用，没有修改功能
+                    
+        5.Memory存储引擎
+                也称为heap存储引擎，数据只存在内存中，无法持久化，MySQL服务重启后数据会丢失，但表结构会保持下来
+                因为table_name.frm是MySQL服务层实现的，跟存储引擎无关。
+                
+                特点：
+                    (1) 支持HASH索引和BTree索引，Memory存储引擎默认会建立HASH索引，HASH索引适用于等值查询，就通过查询筛选出一条记录
+                         ，HASH索引不太适用于范围查询。
+                         BTree索引：适用于范围查询。
+                         
+                    (2) 所有字段只能为固定长度，例如varchar(10)==char(10),在其他的存储引擎中适用varchar(10)代表最大为10bytes，
+                        其实际的长度跟实际的值有关，而char(10)则不管实际值多大存储时都占用10bytes.
+                        
+                    (3) 不支持BLOG和TEXT等大字段。
+                    (4) 使用表级锁
+                    (5) 表的最大大小由系统变量max_heap_table_size决定的。修改max_heap_table_size大小对已经在内存中的memory表是
+                        不生效的，需要对其进行重建。
+                        
+                物理存储方式：
+                    table_name.frm 文件存储表结构信息
+                    
+                Memory存储引擎表和临时表的区别
+                    临时表：(1)查询分析器和查询优化器使用的临时表，跟存储引擎没有关系
+                           (2) create temporary table (SQL语句建立临时表)
+                           
+                适用场景：
+                    (1) 进行一些等值查找，用于映射表，例如邮编和地区的对应表
+                    
+        6.Federated存储引擎
+                特点：
+                    (1) 提供访问远程MySQL服务器上的表的方法，在本地建立了到远程服务器的连接，所以要访问表的数据都在远程服务器上，
+                        并不在Federated存储引擎中存储相关的表的数据，每次通过查询Federated存储引擎时，会发对应的命令到远程的服务器上。
+                        
+                    (2) 本地不存储数据，数据全部放在远程服务器上。
+                    (3) 本地需要保持表结构和远程服务器的连接信息。
+                    
+                要进行Federated存储引擎步骤：
+                    (1) 本地的MySQL服务器要支持Federated存储引擎(默认关闭的)
+                    (2) 远程MySQL服务器要开启MySQL的远程帐号
+                            mysql> grant all PRIVILEGES on wabg.* to  root@'192.168.188.106'  identified by '
+                                   123456' WITH GRANT OPTION;
+                            mysql> flush privileges;
+                            
+                    (3) 在远程服务器要有相关的数据库和表(存储引擎随便)
+                    (4) 在本地的服务器中也要有对应的数据库和表(但其用的存储引擎的是federated)
+                            mysql> create table local_fed(id int, c1 varchar(10)) engine=federated connnection=
+                                   'mysql://用户名:密码@远程服务器ip:远程服务器端口号/远程服务器数据库名/远程服务器表名'；
+                                   
+                
+                    
+                    
+                            
+                
 ```
