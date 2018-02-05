@@ -165,6 +165,8 @@
         
     8.查看mysql系统变量
         mysql> show variables like 'innodb_file_per_table';
+        mysql> show variables 
+        
         
     9.查看表的状态信息
         mysql> show table status like '表名'；

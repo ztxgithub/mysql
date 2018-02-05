@@ -475,3 +475,31 @@
             default-character-set=utf8
 
 ```
+
+## MySQL服务器参数概要
+
+```shell
+    设置MySQL服务器参数有很多种方式，往往要注意设置的先后顺序
+    (1) 命令行参数
+            mysqld_safe --datadir=/data/sql_data
+            
+    (2) 配置文件(永久的修改配置参数)
+            不同的linux读取的MySQL配置文件的顺序不一样，通过命令行进行确认
+            > mysqld --help --verbose | grep -A 1 'Default options'
+            结果：
+                /etc/my.cnf /etc/mysql/my.cnf ~/.my.cnf 
+                
+    MySQL配置参数的作用域
+        MySQL配置参数有些参数是全局的，有些是会话内的，有些是MySQL服务启动时只加载一次的，有些则是可以时刻进行动态修改的
+        
+        (1) 全局参数
+                mysql> set global 参数名=参数值;
+                mysql> set @@global.参数名 := 参数值;
+                
+                有些全局参数设置对所有的连接有效(对所有的MySQL客户端有效)，有些全局参数只能对之后新的连接有效
+                
+        (2) 会话参数
+                mysql> set [session] 参数名=参数值;
+                mysql> set @@session.参数名 := 参数值;
+            
+```
