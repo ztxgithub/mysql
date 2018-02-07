@@ -496,7 +496,10 @@
                 mysql> set global 参数名=参数值;
                 mysql> set @@global.参数名 := 参数值;
                 
-                有些全局参数设置对所有的连接有效(对所有的MySQL客户端有效)，有些全局参数只能对之后新的连接有效
+                有些全局参数设置对所有的连接有效(对所有的MySQL客户端有效)，有些全局参数只能对之后新的连接有效.
+                例如 
+                    mysql> set global wait_timeout=3600;set global interactive_timeout=3600;(只有同时修改2个系统变量值才有效)
+                    同时修改这2个参数对老的连接是没有用的,只有重新连接到MySQL服务器才起作用。
                 
         (2) 会话参数
                 mysql> set [session] 参数名=参数值;

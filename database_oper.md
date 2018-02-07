@@ -165,10 +165,13 @@
         
     8.查看mysql系统变量
         mysql> show variables like 'innodb_file_per_table';
-        mysql> show variables 
+        mysql> show variables where variable_name='wait_timeout' or variable_name='interactive_timeout';
         
         
     9.查看表的状态信息
         mysql> show table status like '表名'；
+        
+    10.设置MySQL系统变量
+        mysql> set global wait_timeout=3600;set global interactive_timeout=3600;
      
 ```
