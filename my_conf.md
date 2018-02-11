@@ -582,7 +582,7 @@
 ### 其他常用的配置参数
 
 ```shell
-        1.sync_binlog 控制MySQL如何向磁盘刷新binlog(从系统cache到磁盘)
+        1.sync_binlog 控制MySQL如何向磁盘刷新binlog(从系统cache到磁盘) 
                       0：MySQL不会主动去刷新到磁盘而是由操作系统自己决定的。
                       1：每次事务操作都会一次binlog写到磁盘(这样是最安全的，但对于I/O会有压力)，如果是主从复制，还是建议主数据库
                          sync_binlog设置为1,这样较为安全
