@@ -131,5 +131,7 @@
              --only-print :并不运行测试脚本(连接数据库等操作)，而是把脚本的数据库操作打印出来
              
         运行使用：
-            > 
+            > mysqlslap --concurrency=1,50,100,200 --iterations=3 --number-int-cols=5 --number-char-cols=5 
+              --auto-generate-sql -auto-generate-sql-add-autoincrement --engine=myisam,innodb --number-of-queries=10 
+              --create-schema=slap_test
 ```
