@@ -48,3 +48,88 @@
     3.响应时间：用于衡量完成一个测试所花费的整体时间，有百分比响应时间：一个SQL90%的响应时间是10ms,那么认为该SQL在正常情况下为10ms
     4.并发量:同时处理的查询请求的数量 ！= 连接数，并发量是正在工作中的并发的操作数或者同时工作的数量
 ```
+
+## 基准测试的步骤
+
+```shell
+    1.计划和设计基准测试
+        (1) 对整个系统进行基准测试还是某一组件
+        (2) 使用什么样的数据进行基准测试，比如我们希望基准测试能够反映实际情况，最好能够采用生产环境的实际数据，提交准备好数据库的备份
+            以及在真实环境中SQL的记录。如果我们的测试没有必要使用真实数据，可以采用一般的基准测试工具
+        (3) 准备基准测试及数据收集脚本：需要记录CPU使用率，IO，网络流量，状态和计数器信息等
+                脚本如下：
+                    #!/bin/bash
+                    INTERVAL=5
+                    PREFIX=/home/imooc/benchmarks/$INTERVAL-sec-status
+                    RUNFILE=/home/imooc/benchmarks/running
+                    echo "1" > $RUNFILE
+                    MYSQL=/usr/local/mysql/bin/mysql
+                    $MYSQL -e "show global variables" >> mysql-variables
+                    while test -e $RUNFILE; do
+                    	file=$(date +%F_%I)
+                    	sleep=$(date +%s.%N | awk '{print 5 - ($1 % 5)}')
+                    	sleep $sleep
+                    	ts="$(date +"TS %s.%N %F %T")"
+                    	loadavg="$(uptime)"
+                    	echo "$ts $loadavg" >> $PREFIX-${file}-status
+                    	$MYSQL -e "show global status" >> $PREFIX-${file}-status &
+                    	echo "$ts $loadavg" >> $PREFIX-${file}-innodbstatus
+                    	$MYSQL -e "show engine innodb status" >> $PREFIX-${file}-innodbstatus &
+                    	echo "$ts $loadavg" >> $PREFIX-${file}-processlist
+                    	$MYSQL -e "show full processlist\G" >> $PREFIX-${file}-processlist &
+                    	echo $ts
+                    done
+                    echo Exiting because $RUNFILE does not exists
+        (4) 运行基准测试
+        (5) 保存及分析基准测试结果:最好能够用脚本进行分析，也可以有图形化呈现
+                
+```
+
+## 基准测试需要主要问题
+
+```shell
+    1.使用生产环境数据时只使用部分数据，如果要使用生产环境的数据则最好使用数据库完全备份来测试，而不是人为的在生产环境的全部数据中只取
+      一小部分进行测试
+    2.在多用户场景中，只做单用户的测试。比如Web中，通常存在大量的并发的场景，所以对Web应用的数据库测试就一定要考虑并发情况，使用多个连接
+      线程对数据库进行测试。在并发测试和单个连接测试可能所表现的性能不太一样(并发测试可能会出现阻塞等现象)
+    3.反复得执行同一个查询(容易缓存命中，无法反应真实查询性能)，在真实生产环境所使用SQL是不同的，
+                
+```
+
+## 常见的基准测试工具
+
+```shell
+    1.mysqlslap
+        特点：
+            (1) 可以模拟服务器负载，并输出相关统计信息
+            (2) 测试时可以指定执行的并发连接数以及我们所要指定的SQL语句。如果我们没有指定SQL语句，mysqlslap可以自动生成完成基准测试
+                所需要的数据及相关的查询语句
+                
+        常用的参数:
+             -a, --auto-generate-sql:由系统自动生成SQL脚本进行测试
+             --auto-generate-sql-add-autoincrement ：在生成的表中增加自增ID列，如果是innodb存储引擎，则这个参数很重要，innodb的
+                                                     主键是聚集索引，所以最好使用自增ID作为innodb的主键
+             --auto-generate-sql-load-type=name ：指定测试中使用的查询类型
+                                                  name 值有 mixed, update, write, key,read，
+                                                  默认是mixed(包含有update, write, key,read)
+                                                  
+             --auto-generate-sql-write-number=#  : 指定初始化数据时生成的数据量(每个线程插入的记录数)
+             --concurrency=# ：指定并发线程的数量    
+             --engine=name ：指定要测试表的存储引擎，可以用逗号分割多个存储引擎，如果是多个存储引擎进行测试，mysqlslap会按照指定的
+                             顺序，先按照MyISAM存储引擎，然后会清理MyISAM表，然后在对innodb进行测试，这个参数不能和
+                             --no-drop( Do not drop the schema after the test)一起使用。如果没有使用这个参数，则MySQL会使用
+                             默认存储引擎进行测试。
+             --no-drop ：在测试完后不进行清理数据，如果没有显式使用该参数，MySQL是在测试完后自动清理数据。如果我们想确认MySQL测试
+                         完后是否是我们想象的结果就可以使用该参数。
+             --iterations=# ：指定测试运行的次数，如果想要得出正确的结果，则要进行多次测试，得出百分比结果
+             --number-of-queries=# ：指定每一个线程执行的查询数量
+             --debug-info ： 指定输出额外的内存及CPU统计信息
+             --number-int-cols=# ：指定测试表中包含的INT类型列的数量,可以通过设置INT类型列的数量来得出性能最优的情况
+             --number-char-cols=# ：指定测试表中包含的varchar类型列的数量
+             --create-schema=name :指定用于执行测试的数据库的名字
+             --query=name :指定自定义SQL脚本文件，如果不想使用MySQL生成的自动SQL脚本进行测试
+             --only-print :并不运行测试脚本(连接数据库等操作)，而是把脚本的数据库操作打印出来
+             
+        运行使用：
+            > 
+```
