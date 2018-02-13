@@ -478,6 +478,13 @@
 
 ```
 
+## MySQL服务器配置参数
+
+```shell
+    1.ubuntu系统下/etc/mysql/mysql.conf.d/mysqld.cnf
+            
+```
+
 ## MySQL服务器参数概要
 
 ```shell

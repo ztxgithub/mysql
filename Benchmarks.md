@@ -133,5 +133,25 @@
         运行使用：
             > mysqlslap --concurrency=1,50,100,200 --iterations=3 --number-int-cols=5 --number-char-cols=5 
               --auto-generate-sql -auto-generate-sql-add-autoincrement --engine=myisam,innodb --number-of-queries=10 
-              --create-schema=slap_test
+              --create-schema=slap_test -uroot -p
+              
+        不足：只能较为简单的测试，不能进行索引创建等复杂的测试，也不能收集相关的cpu利用率和内存等参数
+              
+    2.sysbench
+         可以对系统各个参数(I/O,cpu,内存)进行测试
+         安装说明：
+            https://github.com/akopytov/sysbench#linux
+            
+         常用参数:
+            --mysql-db:指定用于基准测试的数据库名(该数据库名是已经存在的)
+            --mysql-table-engine:指定所使用的存储引擎，有myisam, innodb, heap,默认是innodb
+            --oltp-table-size :指定每个表的数据行数
+            --max-time : 指定最大的整个测试时间
+            --report-interval:指定间隔多长时间输出一次统计信息
+            --mysql-user:指定执行测试的MySQL的用户
+            --mysql-password:指定执行测试的MySQL用户对应的密码
+            prepare : 用于准备测试数据
+            run:用于实际进行测试
+            
+        
 ```
