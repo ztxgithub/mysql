@@ -133,7 +133,7 @@
         运行使用：
             > mysqlslap --concurrency=1,50,100,200 --iterations=3 --number-int-cols=5 --number-char-cols=5 
               --auto-generate-sql -auto-generate-sql-add-autoincrement --engine=myisam,innodb --number-of-queries=10 
-              --create-schema=slap_test -uroot -p
+              --create-schema=slap_test -uroot -p52346898
               
         不足：只能较为简单的测试，不能进行索引创建等复杂的测试，也不能收集相关的cpu利用率和内存等参数
               
@@ -141,6 +141,7 @@
          可以对系统各个参数(I/O,cpu,内存)进行测试
          安装说明：
             https://github.com/akopytov/sysbench#linux
+            进行源代码安装
             
          常用参数:
             --mysql-db:指定用于基准测试的数据库名(该数据库名是已经存在的)
@@ -148,10 +149,43 @@
             --oltp-table-size :指定每个表的数据行数
             --max-time : 指定最大的整个测试时间
             --report-interval:指定间隔多长时间输出一次统计信息
+            --mysql-db=imooc : 指定的数据库名
             --mysql-user:指定执行测试的MySQL的用户
             --mysql-password:指定执行测试的MySQL用户对应的密码
+            --num-threads :有多少个线程进行并发工作
+            --oltp-tables-count=num : 指定测试数据库中表的个数
+            --init-rnd: on(代表在测试开始时，将数据初始化为随机的)
             prepare : 用于准备测试数据
             run:用于实际进行测试
             
+         实际演示:
+            (1) 对CPU进行测试(进行素数的加法运算)
+                    > sysbench --test=cpu --cpu-max-prime=20000 run    (最大的素数为20000以内)
+            (2) I/O测试
+                    准备的数据文件一定要比当前的内存要大，这样才会忽略缓冲区的影响。
+                    > sysbench --test=fileio --file-total-size=1G prepare
+                      (为I/O测试进行准备，准备1G大小文件(其中生产很多小文件，这些小文件大小总和为1G)
+                      
+                    > sysbench --test=fileio help  (帮助信息)
+                    
+                    > sysbench --test=fileio --num-threads=8 --init-rnd=on --file-total-size=1G  --file-test-mode=rndrw
+                      --report-interval=1 run
+                      
+                      (工作线程为8个，测试文件大小为1G,IO操作模式为随机读写)
+                      
+            当拿到新的硬件时，通过以上测试方法掌握 其新的硬件的基准线
+            
+            (3) 对数据库进行基准测试：
+                    1.先在建立一个新的数据库
+                        mysql> create database imooc;
+                    2.创建一个用户，指定对数据库的权限
+                        mysql> grant all PRIVILEGES on *.* to  'jame'@'%'  identified by '123456' WITH GRANT OPTION;
+                        
+                    3.对innodb存储引擎进行测试
+                            准备测试数据：
+                                > sysbench --test=oltp --mysql-table-engine=innodb --oltp-table-size=10000 
+                                  --mysql-db=imooc --mysql-user=jame --mysql-password=123456  prepare
+                            启动系统收集脚本:
+                                Get_Test_info.sh
         
 ```

@@ -223,5 +223,8 @@
         
     10.设置MySQL系统变量
         mysql> set global wait_timeout=3600;set global interactive_timeout=3600;
+        
+    11.查看表的记录数
+        mysql> select count(*) from 表名;
      
 ```

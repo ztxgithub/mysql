@@ -2,6 +2,7 @@
 
 ```shell
     1.sudo apt-get install mysql-server mysql-client
+    2.sudo apt-get install libmysqlclient-dev
     
     MySQL安装后的目录结构分析(此结构只针对于使用apt-get install 在线安装情况)：
     
