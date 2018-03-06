@@ -180,7 +180,7 @@
         
     2.插入数据
         mysql> insert into 表名 values(xxx,xxx),(yyy,yyy);  //支持插入多条记录
-        mysql> inser into 表名(列名1，列名2) values(xxxx,xxx);
+        mysql> insert into 表名(列名1，列名2) values(xxxx,xxx);
         
     3.查看表的定义
         mysql> show create table 表名;
@@ -226,5 +226,21 @@
         
     11.查看表的记录数
         mysql> select count(*) from 表名;
+        
+    12.查看数据库中连接的状态情况
+        mysql> show processlist;
+    13.数据库中所有全局变量的值
+        mysql> show global status;
+     
+```
+
+- 在shell终端的命令
+
+```shell
+
+    1.显示数据库global变量的值
+        > mysql -e "show global status" -uroot -p52346898;
+        
+      
      
 ```
