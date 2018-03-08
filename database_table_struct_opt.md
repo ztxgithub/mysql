@@ -31,3 +31,69 @@
     3.物理设计：根据所使用的数据库特点进行表结构设计，需要采用什么存储引擎，表中的列采用什么数据类型
     4.维护优化：根据实际情况对索引，存储结构等进行优化
 ```
+
+## 数据库设计范式
+
+```shell
+    数据库设计范式:在进行数据库设计时要遵从一些规范，设计出没有数据冗余和数据维护异常的数据库结构。
+    
+    注意:
+         数据库设计范式不能达到性能最优，在真实设计数据库时，要考虑实际的业务使用情况(所有有的时候做一些反范式设计)
+    
+    数据库三范式:
+        (1) 第一范式:
+                    A:数据库表中的所有字段都只具有单一属性(不能进行分解)
+                    B:单一属性的列是由基本的数据类型所构成的(比如整型，浮点型，字符型)
+                    C:设计出来的表都是简单的二维表。
+                    
+        (2) 第二范式: 在第一范式的基础之上定义的，符合第二范式的表一定符合第一范式，要求一个表中只具有一个业务主键，
+                     也就是说符合第二范式的表中不能存在非主键列对 只对部分主键的依赖关系.如果一个表中是复合主键则
+                     它可能不具备第二范式，一般只要一张表中只有一个主键就基本符合第二范式。
+                     
+                     例如表course(student_id,student_name,birth_date,course_name,score,
+                     course_point(学分))， 该表中 primary key(student_id,course_name) 联合主键。在这个表中
+                     非主键列(学分) 只对部分主键(course_name)的依赖关系,跟部分主键(student_id)没有关系，所以这个
+                     表是不符合第二范式，
+                     改造方法:
+                        对该表进行拆分使其符合第二范式，将该表拆分为3张表(学生表,课程表,学生课程映射表)
+                        1.学生表student_table(student_id,student_name,birth_date) primary key(student_id) 只有一个主键
+                        2.课程表course_table(course_name,course_point) primary key(course_name) 只有一个主键
+                        3.学生课程映射表student_course_map(student_id,course_name,score)
+                                    primary key(student_id,course_name)
+                                    
+        (3) 第三范式: 指每一个非主属性 不 部分依赖于业务主键，也不 传递依赖与业务主键，也就是在第二范式的基础上消除了
+                     非主属性对主键的传递依赖(非主键列 A 依赖于非主键列 B，非主键列 B 依赖于主键的情况)
+                     
+                     例如，订单表Order(OrderID，OrderDate，CustomerID，CustomerName，CustomerAddr，CustomerCity) 
+                               primary key(OrderID) 只有一个主键,
+                               
+                          而CustomerName，CustomerAddr，CustomerCity 直接依赖的是 CustomerID（非主键列），
+                          而不是直接依赖于主键，它是通过传递才依赖于主键，所以不符合 3NF。 
+                          
+                     改造方法:
+                        对该表进行拆分使其符合第三范式，将该表拆分为3张表(学生基本信息表,学院信息表)
+                        1.订单表Order(OrderID,OrderDate,CustomerID)
+                          primary key(OrderID) 只有一个主键
+                     
+                        2.客户表Customer(CustomerID，CustomerName，CustomerAddr，CustomerCity)
+```
+
+## 需求分析及逻辑设计
+
+```shell
+    1.需求说明: 按照下面的需求设计一个电子商务网站的数据库结构：
+                    (1) 本网站只销售图书类的商品
+                    (2) 需要具有一下功能:
+                            A:用户登陆  B:用户管理  C:商品展示 D:商品管理 E:供应商管理 F:在线销售
+                            
+    2.需求分析
+            (1) 用户登陆及用户管理功能
+                    A：用户必须注册并登陆系统才能进行网上交易
+                            这边用户名在用户信息中作为唯一的主键
+                    B: 同一用户在同一时间只能在一个地方登陆
+                            在用户登陆过程中要考虑在数据库中 用户的登陆状态 ，
+                    C：用户信息表(用户名，密码，手机号，姓名，注册日期，在线状态，出生日期) primary key(用户名)
+                       该表只有一个业务主键(用户名)，符合第二范式
+                       
+                    
+```
