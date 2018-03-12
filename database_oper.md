@@ -175,28 +175,33 @@
 
 ```shell
 
-    1.查看某个表的信息
+    *.查看某个表的信息
         mysql> desc 表名;
-        
-    2.插入数据
-        mysql> insert into 表名 values(xxx,xxx),(yyy,yyy);  //支持插入多条记录
-        mysql> insert into 表名(列名1，列名2) values(xxxx,xxx);
-        
-    3.查看表的定义
+                
+    *.查看表的定义
         mysql> show create table 表名;
         
-    4.查看innodb状态检查
+    *.查看innodb状态检查
         mysql> show engine innodb status
         
-    5.创建表
+    *.创建表
         (1)创建一张以存储引擎为csv的表
             mysql> create table my_csv(id int not null,c1 varchar(10) not null,c2 char(10) not null) engine=csv;
             
         (2)创建一张以存储引擎为federated的表
             mysql> create table local_fed(id int, c1 varchar(10)) engine=federated connnection=
                     'mysql://用户名:密码@远程服务器ip:远程服务器端口号/远程服务器数据库名/远程服务器表名'；
+                    
+    *.插入数据
+        mysql> insert into 表名 values(xxx,xxx),(yyy,yyy);  //支持插入多条记录
+        mysql> insert into 表名(列名1，列名2) values(xxxx,xxx);    
+                    
+    *.修改表结构
+            mysql> alter table 表名 modify 列名 数据类型
+                例如：
+                mysql> alter table t_time modify data_tm datetime(6),modify timestamp_tm timestamp(6); (修改时间精确到毫秒)
         
-    6.flush 命令 (mysql> flush flush_option ;)
+    *.flush 命令 (mysql> flush flush_option ;)
         (1) mysql> flush HOSTS;
                主要是用来清空主机缓存表。如果你的某些主机改变IP地址，或如果你得到错误消息Host ... isblocked，你应该清空主机表。
                当在连接MySQL服务器时，对一台mysql客户端主机有 max_connect_errors 个错误连续不断地发生，
@@ -208,29 +213,32 @@
         (3) mysql> flush tables;
                 关闭所有打开的表，同时该操作将会清空查询缓存中的内容,刷新缓存重新将表中的数据加载到缓存中。
                 
-    7.索引
+    *.索引
         mysql> create index 索引名 on 表名(列名); 使用了默认索引类型
         mysql> create index 索引名 using btree on 表名(列名); 使用了BTree索引类型
         mysql> show index from 表名；
         
-    8.查看mysql系统变量
+    *.查看mysql系统变量
         mysql> show variables like 'innodb_file_per_table';
         mysql> show variables where variable_name='wait_timeout' or variable_name='interactive_timeout';
         
         
-    9.查看表的状态信息
+    *.查看表的状态信息
         mysql> show table status like '表名'；
         
-    10.设置MySQL系统变量
+    *.设置MySQL系统变量
         mysql> set global wait_timeout=3600;set global interactive_timeout=3600;
         
-    11.查看表的记录数
+    *.查看表的记录数
         mysql> select count(*) from 表名;
         
-    12.查看数据库中连接的状态情况
+    *.查看数据库中连接的状态情况
         mysql> show processlist;
-    13.数据库中所有全局变量的值
+    *.数据库中所有全局变量的值
         mysql> show global status;
+    *.设置时区
+        mysql> set time_zone='+10:00'
+    
      
 ```
 
