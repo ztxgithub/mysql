@@ -3,6 +3,9 @@
 ```shell
     启动MySQL
         > sudo /etc/init.d/mysql restart
+        
+    ubuntu 重启mysqld
+        > service mysql restart
 
     查看服务是否启动
         > ps aux | grep "mysql"
@@ -197,9 +200,11 @@
         mysql> insert into 表名(列名1，列名2) values(xxxx,xxx);    
                     
     *.修改表结构
-            mysql> alter table 表名 modify 列名 数据类型
+            1. mysql> alter table 表名 modify 列名 数据类型
                 例如：
                 mysql> alter table t_time modify data_tm datetime(6),modify timestamp_tm timestamp(6); (修改时间精确到毫秒)
+                
+            2. mysql> alter table 表名 add 列名 数据类型
         
     *.flush 命令 (mysql> flush flush_option ;)
         (1) mysql> flush HOSTS;
@@ -222,22 +227,31 @@
         mysql> show variables like 'innodb_file_per_table';
         mysql> show variables where variable_name='wait_timeout' or variable_name='interactive_timeout';
         
+    *.查看数据库中连接的状态情况
+            mysql> show processlist;
+            
+    *.数据库中所有全局变量的值
+        mysql> show global status;
+        
+    *.设置时区
+        mysql> set time_zone='+10:00'    
         
     *.查看表的状态信息
         mysql> show table status like '表名'；
+        
+    *.设置binlog的存储格式为 段格式(statement)
+        mysql> set session binlog_format=statement;
+    *.查看binlog日志大小
+        mysql> show binary logs;
+    *.刷新日志大小
+        mysql> flush logs;
         
     *.设置MySQL系统变量
         mysql> set global wait_timeout=3600;set global interactive_timeout=3600;
         
     *.查看表的记录数
         mysql> select count(*) from 表名;
-        
-    *.查看数据库中连接的状态情况
-        mysql> show processlist;
-    *.数据库中所有全局变量的值
-        mysql> show global status;
-    *.设置时区
-        mysql> set time_zone='+10:00'
+       
     
      
 ```

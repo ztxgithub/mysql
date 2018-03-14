@@ -25,7 +25,10 @@
             
             # Remove leading # to turn on a very important data integrity option: logging
             # changes to the binary log between backups.
-            # log_bin
+              log_bin    ##不指定binlog日志的保存路径，则默认是/var/lib/mysql
+              log_bin = /var/log/mysql-bin    ##也可以指定路径
+              expire-logs-days=7   ##只保持7天，之后覆盖写
+              
             
             # These are commonly set, remove the # and set as required.
             # 使用给定目录作为根目录(安装目录)。
@@ -72,7 +75,7 @@
             # 所有 mysqld 的连接都是通过 Unix Sockets 或者命名管道进行的.
             # 注意在 Windows下如果没有打开命名管道选项而只是用此项
             # (通过 “enable-named-pipe” 选项) 将会导致 MySQL 服务没有任何作用!
-            #skip-networking
+            # skip-networking
             
             # MySQL 服务所允许的同时会话数的上限
             # 其中一个连接将被 SUPER 权限保留作为管理员登录.
@@ -190,25 +193,25 @@
             # 打开二进制日志功能。
             # 在复制(replication)配置中，作为 MASTER 主服务器必须打开此项
             # 如果你需要从你最后的备份中做基于时间点的恢复，你也同样需要二进制日志。
-            log-bin=mysql-bin
+            log-bin = mysql-bin
             
             # 如果你在使用链式从服务器结构的复制模式 (A->B->C)，
             # 你需要在服务器B上打开此项。
             # 此选项打开在从线程上重做过的更新的日志， 并将其写入从服务器的二进制日志。
-            #log_slave_updates
+            # log_slave_updates
             
             # 打开全查询日志。 所有的由服务器接收到的查询 (甚至对于一个错误语法的查询)
             # 都会被记录下来。 这对于调试非常有用， 在生产环境中常常关闭此项。
-            #log
+            # log
             
             # 将警告打印输出到错误 log 文件。 如果你对于 MySQL 有任何问题
             # 你应该打开警告 log 并且仔细审查错误日志，查出可能的原因。
-            #log_warnings
+            # log_warnings
             
             # 记录慢速查询。 慢速查询是指消耗了比 “long_query_time” 定义的更多时间的查询。
             # 如果 log_long_format 被打开，那些没有使用索引的查询也会被记录。
             # 如果你经常增加新查询到已有的系统内的话。 一般来说这是一个好主意，
-            #log_slow_queries
+            # log_slow_queries
             
             # 有的使用了比这个时间(以秒为单位)更多的查询会被认为是慢速查询。
             # 不要在这里使用“1″, 否则会导致所有的查询,甚至非常快的查询页被记录下来(由于 MySQL 目前时间的精确度只能达到秒的级别)。
@@ -217,7 +220,7 @@
             # 在慢速日志中记录更多的信息。
             # 一般此项最好打开。
             # 打开此项会记录使得那些没有使用索引的查询也被作为到慢速查询附加到慢速日志里
-            #log_long_format
+            # log_long_format
             
             # 此目录被MySQL用来保存临时文件。例如,
             # 它被用来处理基于磁盘的大型排序,和内部排序一样。
@@ -226,7 +229,7 @@
             # 另一种选择是你也可以将其放置在独立的磁盘上。
             # 你可以使用”;”来放置多个路径
             # 他们会按照 roud-robin 方法被轮询使用。
-            #tmpdir = /tmp
+            # tmpdir = /tmp
             
             # *** 主从复制相关的设置
             
