@@ -64,10 +64,14 @@
                 
                 缺点:
                     1.记录日志量大，消耗更多的磁盘IO和网络IO
+                    
+        (3) 混合日志格式
+                特定:
+                    数据库系统变量binlog_format = MIXED,它是基于段的日志格式和行的日志格式的折衷的选择，
     
         
-    命令 mybinlog 
-       (1) 如果binlog的格式是 段格式(statement)  > mybinlog 二进制日志
+    命令 mysqlbinlog 
+       (1) 如果binlog的格式是 段格式(statement)  > mysqlbinlog 二进制日志
     
 
 ```

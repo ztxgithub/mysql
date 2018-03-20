@@ -263,6 +263,12 @@
     1.显示数据库global变量的值
         > mysql -e "show global status" -uroot -p52346898;
         
+    2.查看binlog日志
+        > mysqlbinlog 日志文件
+        
+        使查看的信息利于看懂
+        >  mysqlbinlog -vv 日志文件  
+        
       
      
 ```
