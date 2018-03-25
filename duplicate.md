@@ -158,5 +158,17 @@
   基于日志点的复制：
        1.基于日志点的复制的配置步骤:
             (1) 在主DB服务器上建立复制账号
+                    I.创建用户
+                        mysql> create user ‘用户名’ @ ‘允许使用的ip网段' identified by '密码'
+                    II.授权
+                        mysql> grant replication slave on *.* to 用户名’ @ ‘允许使用的ip网段'
+            (2) 配置主数据库服务器
+                    I. bin_log=mysql-bin  (用来启动mysql二进制日志，指定mysql二进制日志名字规范)
+                    II. server_id = 100 (在所有数据库中要确保唯一)
+            (3) 配置从数据库服务器
+                    I. bin_log=mysql-bin
+                    II. server_id = 101
+                    III. relay_log = mysql_relay_bin (一定要进行固定，默认是按主机名字进行命名)
+                    IV. log_slave_update = on [可选] (如果以后要将该从服务器当做主服务器使用则一定要设置为on)
     
 ```

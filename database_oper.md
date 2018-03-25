@@ -252,7 +252,8 @@
     *.查看表的记录数
         mysql> select count(*) from 表名;
        
-    
+    *.建立数据库用户
+        mysql> create user ‘用户名’ @ ‘允许使用的ip网段' identified by '密码'
      
 ```
 
