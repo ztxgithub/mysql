@@ -270,6 +270,9 @@
         使查看的信息利于看懂
         >  mysqlbinlog -vv 日志文件  
         
-      
+    3.进行数据库备份
+         > mysqldump --master-data=2 -single-transaction
+            参数:
+                -single-transaction : 保证事务的一致性
      
 ```

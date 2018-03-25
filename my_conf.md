@@ -614,5 +614,8 @@
                 [Service]新添加两行如下参数：
                         LimitNOFILE=10000
                         LimitNPROC=10000
+                        
+                > systemctl daemon-reload 
+                > systemctl restart mysqld.service 
                       
 ```
