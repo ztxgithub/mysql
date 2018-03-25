@@ -601,3 +601,18 @@
         3.max_connections: 控制允许的最大的连接数，因为有些内存分配是以 连接 为单位的,所以各个连接内存总和不能超过系统的内存。
                       
 ```
+
+### 配置参数常见问题
+
+```shell
+        1.在 /etc/my.cnf 中设置了 max_connections = 3000,重启mysqld.service,但MySQL系统变量中还是没有该表
+            解决方法:
+                mysql有默认打开文件数限制。可以通过配置/usr/lib/systemd/system/mysqld.service来调大打开文件数目
+                
+                配置/usr/lib/systemd/system/mysqld.service
+                
+                [Service]新添加两行如下参数：
+                        LimitNOFILE=10000
+                        LimitNPROC=10000
+                      
+```
