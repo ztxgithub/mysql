@@ -156,19 +156,33 @@
       
       
   基于日志点的复制：
+  
+       基本原理:
+            在从库服务器中通过读取哪个二进制日志(mysql-binlog.000002)和偏移量进行增量同步，如果指定错误会造成遗漏或则重复，导致
+            主从不一致
        1.基于日志点的复制的配置步骤:
             (1) 在主DB服务器上建立复制账号
                     I.创建用户
                         mysql> create user ‘用户名’ @ ‘允许使用的ip网段' identified by '密码'
+                        例如
+                         mysql> create user ‘jame’ @ ‘192.168.3.%' identified by '123456';
                     II.授权
                         mysql> grant replication slave on *.* to 用户名’ @ ‘允许使用的ip网段'
-            (2) 配置主数据库服务器
-                    I. bin_log=mysql-bin  (用来启动mysql二进制日志，指定mysql二进制日志名字规范)
+                        其中 replication slave 是一种权限类型
+                        例如
+                           mysql> grant replication slave on *.* to 'jame’ @ ‘192.168.3.%';
+            (2) 配置主数据库服务器(在/etc/my.cnf)
+                    I.  log-bin=mysql-bin  (用来启动mysql二进制日志，指定mysql二进制日志名字规范 /home/mysql/log/mysql-bin)
                     II. server_id = 100 (在所有数据库中要确保唯一)
+                    可选：
+                        max_binlog_size = 1000M
+                        binlog_format = row
+                        expire_logs_days = 7
+                        sync_binlog = 1
             (3) 配置从数据库服务器
-                    I. bin_log=mysql-bin
+                    I. log-bin = mysql-bin(在从数据库配置binlog方便以后进行主从迁移，故障转移，进行连路复制)
                     II. server_id = 101
-                    III. relay_log = mysql_relay_bin (一定要进行固定，默认是按主机名字进行命名)
+                    III. relay_log = mysql_relay_bin (一定要进行固定，默认是按主机名字进行命名 /home/mysql/log/mysql-relay-bin)
                     IV. log_slave_update = on [可选] (如果以后要将该从服务器当做主服务器使用则一定要设置为on)
                     V. read_only = on [可选] (安全配置参数)
                     
@@ -177,21 +191,57 @@
                     保留了所有自服务器以来的二进制日志，或则主从服务器都是最近配置的，也可以不进行从服务器的初始化。
                     不过对于已经运行一段时间的数据库来说，这一步(初始化从数据库的数据)是必须的，就算有二进制日志，如果通过二进制日志
                     进行同步也会耗费很多时间，所以不如通过主数据库的备份来完成从数据库的初始化这样更有效率。
-                    数据库备份方法:
+                    A.主数据库备份方法:
                         I.进行逻辑备份，使用这个工具对MySQL进行备份时会把数据库中所有的数据库对象找出来存储为一个存储文件，
                           为了保证事务的一致性，要加上-single-transaction参数，使用这个工具要对数据库表进行加锁的，这样会
                           影响数据库的并发性，在一个访问非常频繁的系统中使用这个工具对表进行备份会造成大量阻塞。--master-data参数
                           在备份时记录主库当前的二进制日志的偏移量信息
-                          > mysqldump --master-data=2 -single-transaction
+                          在主数据库服务器上进行备份，并将all.mysql拷贝到 从数据库服务器上
+                          > mysqldump --master-data -single-transaction --triggers --routines --all-databases -uroot
+                            -p >> all.mysql
                           
                         II. 对于innodb存储引擎，能够做到不阻塞，可以在不影响主库的情况下备份从库
                              但是如果使用了其他的存储引擎(例如MyISAM)，则会造成阻塞情况
                              --slave-info参数在备份时记录主数据库二进制日志信息以及当前的日志偏移量信息
+                             在线上环境推荐使用xtrabackup，进行热备份
                           > xtrabackup --slave-info
+                          
+                    B.从数据库服务器初始化
+                        > mysql -uroot -p < all.mysql     (将备份数据库文件进行导入)
                           
             (5) 启动复制连路
                     在从服务器上进行操作，我们可以使用一下SQL语句来告诉备库从主数据库二进制日志的什么位置开始同步数据
+                    参数master_log_file和参数master_log_pos在(4)中数据库备份中找到，也就是备库要从主库什么位置开始同步
+                    二进制日志的文件名和偏移量
+                    在从服务器执行
+                        > change master to master_host='主服务器ip',master_user='在主服务器创建用户名',
+                          master_password='对应密码'，master_log_file='mysql_log_file_name',master_log_pos=4;
+                          
+                    例如：
+                        change master to master_host='192.168.1.100',master_user='jame',
+                        master_password='123456'，master_log_file='mysql-bin.000003',master_log_pos=1893;
+                        
+                        其中master_log_file='mysql-bin.000003',master_log_pos=1893;可以查看all.mysql(备份文件)的内容
                     
                           
-    
+            (6) 查看复制连路配置
+                    mysql> show slave status \G;
+            (7) 启动复制连路
+                    mysql> start slave;
+                    
+       2.基于日志点的复制的优缺点:
+            优点：
+                (1) 是MySQL最早支持的复制技术，Bug相对较少
+                (2) 对SQL查询没有任何限制（特别是基于行的复制，对所有SQL语句没有任何要求）
+                (3) 故障处理比较容易(网上资料较多)
+                
+            缺点:
+                (1) 故障转移时重新获取新的主数据库的日志点信息比较困难，这在一主多从尤其困难，如果主库发生宕机，我们要从多个从库中
+                    找出主库，而其他的从库要对新的主库进行重新同步，由于每一个服务器的二进制日志文件都是独立存在的，所以很难找到
+                    其他从库应该和新的主库进行同步的日志点，这一点在后面进行高可用部署时会显得非常重要
+                    
+                    
+  基于GTID复制：
+        1.基本原理:
+            从库服务器告诉主是服务器以及执行完事务的GTID(全局事务 ID (Global Transaction ID, GTID)）值
 ```

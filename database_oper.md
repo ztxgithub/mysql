@@ -254,6 +254,8 @@
        
     *.建立数据库用户
         mysql> create user ‘用户名’ @ ‘允许使用的ip网段' identified by '密码'
+        例如
+           mysql> create user ‘jame’ @ ‘192.168.3.%' identified by '123456';
      
 ```
 
@@ -271,8 +273,11 @@
         >  mysqlbinlog -vv 日志文件  
         
     3.进行数据库备份
-         > mysqldump --master-data=2 -single-transaction
+         > mysqldump --master-data -single-transaction --triggers --routines --all-databases -uroot
+                                       -p >> all.mysql
             参数:
                 -single-transaction : 保证事务的一致性
+                --triggers ：备份触发器
+                --all-databases：备份所有数据库(包括系统数据库)，这就要求还原的MySQL版本与备份版本要一致
      
 ```
