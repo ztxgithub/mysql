@@ -256,6 +256,16 @@
         mysql> create user ‘用户名’ @ ‘允许使用的ip网段' identified by '密码'
         例如
            mysql> create user ‘jame’ @ ‘192.168.3.%' identified by '123456';
+           
+    *.查看数据库中用户信息
+        I. mysql> use mysql;
+        II. mysql> select user,host from user;
+        
+    *.查看授权信息
+        mysql> show grants for '用户名'@'host'
+        
+        例如：
+            mysql> show grants for 'jame'@'192.168.0.%';
      
 ```
 

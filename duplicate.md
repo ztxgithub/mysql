@@ -214,11 +214,11 @@
                     参数master_log_file和参数master_log_pos在(4)中数据库备份中找到，也就是备库要从主库什么位置开始同步
                     二进制日志的文件名和偏移量
                     在从服务器执行
-                        > change master to master_host='主服务器ip',master_user='在主服务器创建用户名',
+                    mysql> change master to master_host='主服务器ip',master_user='在主服务器创建用户名',
                           master_password='对应密码'，master_log_file='mysql_log_file_name',master_log_pos=4;
                           
                     例如：
-                        change master to master_host='192.168.1.100',master_user='jame',
+                    mysql> change master to master_host='192.168.1.100',master_user='jame',
                         master_password='123456'，master_log_file='mysql-bin.000003',master_log_pos=1893;
                         
                         其中master_log_file='mysql-bin.000003',master_log_pos=1893;可以查看all.mysql(备份文件)的内容
@@ -243,5 +243,83 @@
                     
   基于GTID复制：
         1.基本原理:
-            从库服务器告诉主是服务器以及执行完事务的GTID(全局事务 ID (Global Transaction ID, GTID)）值
+            从库服务器告诉主是服务器以及执行完事务的GTID(全局事务 ID (Global Transaction ID, GTID)）值,然后主库会把所有从库上没有
+            执行的事务发送到从库上，使用GTID可以保证同一事务只在指定的从库执行一次
+        2.GTID概念:
+            GTID即全局事务ID，其保证为每一个在主数据库上提交的事务在复制集群中可以生成一个唯一的ID
+            GTID=source_id:transaction_id ,其source_id是server_uuid(确保每一个事务唯一)，
+                                           transaction_id是自增序列(在主库上执行的第几个事务)
+        3.基于GTID复制的配置步骤:
+            (1) 在主DB服务器上建立复制账号(与基于日志点操作一致)
+                    需要注意的是一定不能在从服务器建立相同的账号，因为GTID复制会把所有主服务器上的事务都同步到从服务器上去，所以
+                    在从服务上手动创建账号，在复制连路是会发生错误
+            (2) 配置主数据库服务器(在/etc/my.cnf)修改完后需要重启MySQL服务器
+                     I. log-bin=mysql-bin  (用来启动mysql二进制日志，指定mysql二进制日志名字规范 /home/mysql/log/mysql-bin)
+                     II. server_id = 100 (在所有数据库中要确保唯一) 
+                     III. gtid_mode = on (决定了是否启动GTID模式)
+                     IV. enforce-gtid-consiste (强制GTID的一致性,用于启动GTID后事务的安全)
+                         副作用：(1) 无法使用create table...select联合语句
+                                (2) 无法使用在事务中使用create temporary table 建立临时表
+                                (3) 无法使用关联更新事务表和非事务表
+                     V. log-slave-updates = on (在从服务器中记录主服务器发送过来的修改日志,mysql5.7版本不需要配置)
+                     
+            (3) 配置从数据库服务器(修改完后需要重启MySQL服务器)
+                     A. server_id = 101
+                     B. relay_log = mysql_relay_bin (一定要进行固定，默认是按主机名字进行命名 /home/mysql/log/mysql-relay-bin)
+                     C. gtid_mode = on (决定了是否启动GTID模式)
+                     D. enforce-gtid-consiste (强制GTID的一致性,用于启动GTID后事务的安全)
+                     推荐使用
+                     E. log-slave-updates = on
+                     F. read_only = on [可选] (安全配置参数)
+                     G. master_info_repository = TABLE
+                     H. relay_log_info_repository = TABLE 
+                     (master_info_repository和relay_log_info_repository这2个参数指定了从服务器连接主服务器的信息以及中继日志信息
+                      默认是存储在文件中，设置该参数将信息保存在表中)
+                      
+            (4) 初始化从数据库的数据(方法和基于日志点操作一致)
+                    不同的是记录备份时最后的事务GTID值
+                    
+            (5) 启动基于GTID的复制
+                     参数master_auto_position是告诉MySQL是使用GTID复制
+                     > change master to master_host='主服务器ip',master_user='在主服务器创建用户名',
+                       master_password='对应密码'，master_auto_position=1;
+                       
+            (6) 查看复制连路配置
+                     mysql> show slave status \G;
+                     
+            (7) 启动复制连路(只要主库上进行修改，从库对应也会同步)
+                     mysql> start slave;
+                     
+        2.基于GTID的复制的优缺点:
+            优点：
+                (1) 可以很方便进行故障转移，这是因为GTID的全局唯一的事务标识符，我们根据GTID就会知道哪些事务是没有在从库中执行的，
+                    那么在进行故障转移时对多个从服务器也不用通过新的二进制日志偏移量进行同步
+                (2) 从库不会丢失主库上的任何修改，因为使用了log-slave-updates(这要保证主库上没有删除二进制日志文件)
+                
+            缺点:
+                (1) 故障处理复杂，比如对于在从库上出现了重复主键的错误，之前我们在保证主从数据没有差异的情况下直接在从库上跳过这个错误
+                    就可以了，但是在使用基于GTID复制后无法简单得处理，我们必须要通过在从库上插入空事务的方式才能跳过这种错误
+                (2) 对执行的SQL有一定的限制，包括 在事务中使用create temporary table 建立临时表    
+                                
+                                
+  选择复制模式要考虑的问题
+        1.使用的MySQL版本，基于GTID复制是在MySQL5.6以后
+        2.复制架构及主从切换的方式，基于GTID复制在主从切换更加方便，特别是在一主多从的架构中，不需要担心日志偏移量问题
+        3.所使用的高可用管理组件，是否支持主从复制
+```
+
+## MySQL复制拓扑
+
+```shell
+    1.背景资料
+        在MySQL5.7以前，一个从库只能有一个主库，在MySQL5.7以后，支持一从多主架构
+        
+    2.一主多从的复制拓扑
+        I.优缺点
+            优点：
+                (1) 配置简单，我们可以非常方便得比较不同从库的存放事件主库二进制位置，如果我们对主库进行有计划的停机维护时，
+                    就可以利用特性方便进行主从切换，先把主库设置为只读，在所有的从库同步完主库数据后，从多个从库中选出一个新的主库
+                    直接进行切换就可以了
+    
+
 ```
