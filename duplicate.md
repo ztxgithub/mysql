@@ -197,7 +197,7 @@
                           影响数据库的并发性，在一个访问非常频繁的系统中使用这个工具对表进行备份会造成大量阻塞。--master-data参数
                           在备份时记录主库当前的二进制日志的偏移量信息
                           在主数据库服务器上进行备份，并将all.mysql拷贝到 从数据库服务器上
-                          > mysqldump --master-data -single-transaction --triggers --routines --all-databases -uroot
+                          > mysqldump --master-data=2 -single-transaction --triggers --routines --all-databases -uroot
                             -p >> all.mysql
                           
                         II. 对于innodb存储引擎，能够做到不阻塞，可以在不影响主库的情况下备份从库
