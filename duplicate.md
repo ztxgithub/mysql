@@ -226,7 +226,7 @@
                           
             (6) 查看复制连路配置
                     mysql> show slave status \G;
-            (7) 启动复制连路
+            (7) 启动复制
                     mysql> start slave;
                     
        2.基于日志点的复制的优缺点:

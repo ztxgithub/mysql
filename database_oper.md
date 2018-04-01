@@ -266,6 +266,9 @@
         
         例如：
             mysql> show grants for 'jame'@'192.168.0.%';
+            
+    *.查看主数据库的状态
+        mysql> show master status \G;
      
 ```
 

@@ -168,10 +168,6 @@
                     
             (3) 部署步骤
                     A. 配置主主复制及主从同步集群
-                            1.主DB服务器上建立复制账号(跟基于日志点的复制的配置步骤一样)
-                            2.对节点1(活动主数据库)进行备份，从而对节点2(备用主数据库)和节点3(从数据库)进行恢复
-                              (跟基于日志点的复制的配置步骤一样)
-                            3.启动复制连路(change master 命令)
                     B. 安装主从节点所需要的支持包
                     C. 安装及配置MMM工具集
                     D. 运行MMM监控服务
@@ -180,7 +176,191 @@
                             
                     例子：
                         MMM演示拓扑
-                            有2个主服务器，一个从服务器，
-            
-            
+                            节点1：活动主数据库服务器 192.168.3.100
+                            节点2: 备用主数据库服务器 192.168.3.101
+                            节点3: 从数据库服务器    192.168.3.102
+                            
+                        1.对节点1(活动主)进行操作
+                            (1) 在节点1上建立复制账号
+                                    I.创建用户
+                                        mysql> create user ‘jame’ @ ‘192.168.3.%' identified by '123456';
+                                    II.授权
+                                        mysql> grant replication slave on *.* to 'jame’ @ ‘192.168.3.%';
+                                        其中 replication slave 是一种权限类型
+                           (2)  配置节点1服务器(在/etc/my.cnf)
+                                    I.  log-bin=mysql-bin  
+                                        (用来启动mysql二进制日志，指定mysql二进制日志名字规范 /home/mysql/log/mysql-bin)
+                                    II. server_id = 100 (在所有数据库中要确保唯一)
+                                    可选：
+                                        max_binlog_size = 1000M
+                                        binlog_format = row
+                                        expire_logs_days = 7
+                                        sync_binlog = 1
+                                        
+                           (3) 在节点1中进行mysqldump备份
+                                  > mysqldump --master-data=2 -single-transaction --triggers --routines 
+                                    --all-databases -uroot -p >> all.mysql
+                                    
+                        下面2个步骤是配置主主相互同步操作
+                        2.对节点2(备用主数据库)进行操作(进行主从复制)
+                            (1) 对节点2(备用主数据库)进行数据恢复
+                                    > mysql -uroot -p < all.mysql     (将备份数据库文件进行导入)
+                                    
+                            (2) 配置节点2服务器(在/etc/my.cnf)
+                                    I.  log-bin=mysql-bin  
+                                        (用来启动mysql二进制日志，指定mysql二进制日志名字规范 /home/mysql/log/mysql-bin)
+                                    II. server_id = 101 (在所有数据库中要确保唯一)
+                                    可选：
+                                        max_binlog_size = 1000M
+                                        binlog_format = row
+                                        expire_logs_days = 7
+                                        sync_binlog = 1
+                                    
+                            (3) 配置复制链路
+                                    mysql> change master to master_host='192.168.1.100',master_user='jame',
+                                           master_password='123456'，master_log_file='mysql-bin.000003',
+                                           master_log_pos=1893;
+                                                            
+                                    其中master_log_file='mysql-bin.000003',master_log_pos=1893;
+                                    可以查看all.mysql(备份文件)的内容
+                                    
+                            (4) 启动复制
+                                     mysql> start slave;
+                                     
+                        3.配置节点1(活动主)的主从复制
+                            (1) 对节点1(活动主)进行数据恢复 (因当时节点1是所有数据的源，所以这步可以省略)
+                                   > mysql -uroot -p < all.mysql     (将备份数据库文件进行导入)
+                                   
+                            (2) 查看节点2(备用主数据库) 当前的日志点信息
+                                    mysql> show master status \G;  (这个命令是在节点2(备用主数据库)进行的)
+                                    
+                                    结果
+                                        File: mysql-bin.000002
+                                        Position:1412692
+                                   
+                            (3) 配置复制链路
+                                    mysql> change master to master_host='192.168.1.101',master_user='jame',
+                                           master_password='123456'，master_log_file='mysql-bin.000002',
+                                           master_log_pos=1412692;
+                                           
+                                    注意这个时候 master_log_file和master_log_pos的值是备用主数据库当前的日志点信息
+                                    
+                            (4) 启动复制
+                                     mysql> start slave;
+                            (5) 查看复制情况
+                                    mysql> show slave status \G;
+                                    
+                        以上配置完成后则节点1和节点2互为主从关系，节点1的主数据库是节点2，节点2的主数据是节点1
+                        
+                        4.对节点3(从数据库服务器)操作
+                            (1) 对节点3(从数据库服务器)进行数据恢复
+                                    > mysql -uroot -p < all.mysql     (将备份数据库文件进行导入)
+                                    
+                            (2) 配置节点3服务器(在/etc/my.cnf)
+                                    I. log-bin = mysql-bin(在从数据库配置binlog方便以后进行主从迁移，故障转移，进行连路复制)
+                                    II. server_id = 103
+                                    III. relay_log = mysql_relay_bin 
+                                         (一定要进行固定，默认是按主机名字进行命名 /home/mysql/log/mysql-relay-bin)
+                                    IV. log_slave_update = on [可选] (如果以后要将该从服务器当做主服务器使用则一定要设置为on)
+                                    V. read_only = on 
+                                    
+                            (3) 配置复制链路
+                                    mysql> change master to master_host='192.168.1.100',master_user='jame',
+                                           master_password='123456'，master_log_file='mysql-bin.000003',
+                                           master_log_pos=1893;
+                                                            
+                                    其中master_log_file='mysql-bin.000003',master_log_pos=1893;
+                                    可以查看all.mysql(备份文件)的内容
+                                    
+                            (4) 启动复制
+                                     mysql> start slave;
+                                     
+                        5.对每个服务器安装MMM架构需要的软件
+                            (1) > wget http://mirrors.opencas.cn/epel/epel-release-latest-6.noarch.rpm
+                            (2) > wget http://rpms.famillecollet.com/enterprise/remi-release-6.rpm
+                            (3) > rpm -ivh epel-release-latest-6.noarch.rpm
+                            (4) > rpm -ivh remi-release-6.rpm
+                            (5) > vim /etc/yum.repos.d/remi.repo
+                                    将[remi]
+                                        enabled = 0 
+                                    
+                                    修改为
+                                    [remi]
+                                        enabled = 1
+                                         
+                            (6) > vim /etc/yum.repos.d/epel.repo
+                                            将[epel]
+                                               # baseurl=http://......
+                                                 mirrorlist=http://
+                                            
+                                            去注释和注释
+                                            [remi]
+                                                baseurl=http://......   
+                                                #mirrorlist=http://
+                            (7) 安装监控服务
+                                    A.查看MMM有那些安装包
+                                        > rpm search mmm
+                                        结果：
+                                            mysql-mmm-agent.noarch
+                                            mysql-mmm-monitor.noarch
+                                            mysql-mmm-tools.noarch
+                                            mysql-mmm-noarch
+                                    B.yum -y install  mysql-mmm-agent.noarch (进行代理软件的安装)
+                                    
+                        6.在监控服务器上安装对应的软件
+                            > yum -y install mysql-mmm*
+                            
+                        7.在节点1(活动主数据库)创建账号(会同步到备份主数据库和从数据库中)
+                            (1) 创建MMM监控账号(检查数据库健康状况)
+                                    mysql> grant replication client on *.* to 'mmm_monitor’ @ ‘192.168.3.%' 
+                                            identified by '123456';
+                                            
+                            (2) 创建MMM代理服务账号   
+                                    为了改变只读模式或则改变从服务器为主服务器，目的是故障转移或则主从切换，所以需要的权限
+                                    比较大
+                                    
+                                    mysql> grant super,replication client,process on *.* to 'mmm_agent’ 
+                                           @ ‘192.168.3.%' identified by '123456';
+                                           
+                            (3) 创建MMM复制账号（就是主从复制(同步)时的账号）
+                            
+                        8.在每一个数据库服务器中配置MMM的mmm_common.conf
+                            > vim /etc/mysql-mmm/mmm_common.conf
+                            需要修改
+                                <host default>
+                                    cluster_interface   eth0   (自己本地的网络接口)
+                                    replication_user   jame   (MMM复制账号)
+                                    replication_password 123456
+                                    agent_user mmm_agent   (步骤7中创建MMM代理服务账号)
+                                    agent_password 123456
+                                </host>
+                                
+                                <host db1>          (活动主数据库)
+                                    ip     192.168.3.100
+                                    mode   master
+                                    peer   db2
+                                </host>
+                                
+                                <host db2>          (备份主数据库)
+                                    ip     192.168.3.101
+                                    mode   master
+                                    peer   db1
+                                </host>
+                                                                    
+                                <host db3>          (从数据库)
+                                    ip     192.168.3.102
+                                    mode   slave
+                                </host>                            
+ 
+                                <role writer>     (数据库具备写功能)
+                                    hosts   db1，db2
+                                    ips     192.168.3.90   (虚拟ip，刚开始该ip作用与db1，当db1出现宕机时，vip漂移到db2)
+                                    mode   exclusive
+                                </role>     
+                                
+                                <role reader>     (数据库具备读功能)
+                                    hosts   db1，db2, db3
+                                    ips     192.168.3.91,  192.168.3.92,  192.168.3.93 
+                                    mode   balanced
+                                </role>     
 ```
