@@ -469,6 +469,10 @@
                 
     4.MHA实际部署
         (1) 拓扑架构(基于GTID的复制模式)
+                节点1: 主数据库 192.168.3.100
+                节点2: 从数据库1 192.168.3.101
+                节点3: 从数据库2 192.168.3.102 
+                监控服务器 192.168.3.102
         (2) 配置步骤
                 A. 配置集群中所有主机的ssh免认证登陆
                         在很多情况下需要通过ssh来进行，比如故障转移过程中保存原主服务器的二进制日志，配置虚拟ip地址
@@ -481,7 +485,101 @@
                          masterha_check_repl(用来检测集群中的复制链路是否正确)
                 E. 启动并测试MHA服务
                 
-        
+        (3) 实际操作
+                1.对每一个服务器都设置 gtid_mode 为 on
+                2.对节点1(主数据)进行操作
+                      (1) 在节点1上建立复制账号
+                              I.创建用户
+                                  mysql> create user ‘jame’ @ ‘192.168.3.%' identified by '123456';
+                              II.授权
+                                  mysql> grant replication slave on *.* to 'jame’ @ ‘192.168.3.%';
+                                  其中 replication slave 是一种权限类型
+                                  
+                      (2)  配置节点1服务器(在/etc/my.cnf)
+                              I.  log-bin=mysql-bin  
+                                  (用来启动mysql二进制日志，指定mysql二进制日志名字规范 /home/mysql/log/mysql-bin)
+                              II. server_id = 100 (在所有数据库中要确保唯一)
+                              可选：
+                                  max_binlog_size = 1000M
+                                  binlog_format = row
+                                  expire_logs_days = 7
+                                  sync_binlog = 1
+                                  
+                      (3) 在节点1中进行mysqldump备份
+                            > mysqldump --master-data=2 -single-transaction --triggers --routines 
+                              --all-databases -uroot -p >> all.mysql
+                              
+                3.对节点2，节点3进行从数据库恢复
+                    (1) 对(从数据库服务器)进行数据恢复
+                            > mysql -uroot -p < all.mysql     (将备份数据库文件进行导入)
+                            
+                    (2) 配置节点3服务器(在/etc/my.cnf)
+                         A. server_id = 101
+                         B. relay_log = mysql_relay_bin (一定要进行固定，默认是按主机名字进行命名 /home/mysql/log/mysql-relay-bin)
+                         C. gtid_mode = on (决定了是否启动GTID模式)
+                         D. enforce-gtid-consiste (强制GTID的一致性,用于启动GTID后事务的安全)
+                         推荐使用
+                         E. log-slave-updates = on
+                         F. read_only = on [可选] (安全配置参数)
+                         G. master_info_repository = TABLE
+                         H. relay_log_info_repository = TABLE 
+                         (master_info_repository和relay_log_info_repository这2个参数指定了从服务器连接主服务器的信息以及中继日志信息
+                          默认是存储在文件中，设置该参数将信息保存在表中)
+                            
+                    (3) 配置复制链路(基于GTID复制)
+                            mysql> change master to master_host='192.168.3.100',master_user='jame',
+                                   master_password='123456'，master_auto_position=1;
+                            
+                    (4) 启动复制
+                             mysql> start slave;
+                             
+                4.进行ssh免认证登陆
+                    在192.168.3.100中进行操作
+                    (1) 生成ssh秘钥
+                        > ssh-keygen
+                    (2) 将秘钥拷贝到自身的服务器上
+                        > ssh-copy-id -i /root/.ssh/id_rsa '-p 22 root@192.168.3.100'
+                    (3) 将秘钥拷贝到各个从服务器上
+                        > ssh-copy-id -i /root/.ssh/id_rsa '-p 22 root@192.168.3.101'
+                        > ssh-copy-id -i /root/.ssh/id_rsa '-p 22 root@192.168.3.102'
+                        
+                    在192.168.3.101中也进行操作
+                     (1) 生成ssh秘钥
+                        > ssh-keygen
+                     (2) 将秘钥拷贝到自身的服务器上
+                        > ssh-copy-id -i /root/.ssh/id_rsa '-p 22 root@192.168.3.101'
+                     (3) 将秘钥拷贝到各个从服务器上
+                        > ssh-copy-id -i /root/.ssh/id_rsa '-p 22 root@192.168.3.100'
+                        > ssh-copy-id -i /root/.ssh/id_rsa '-p 22 root@192.168.3.103'
+                                        
+                     在192.168.3.102也进行相应的操作
+                     
+                5.在每一台服务器上安装MHA-node软件包
+                    > yum -y install perl-DBD-MySQL ncftp perl-DBI.x86
+                    > rpm -ivh mha4mysql-node-0.57-0.el7.noarch.rpm
+                    
+                6.在监控服务器安装MHA-manager软件包
+                    > yum -y install perl-Config-Tiny.noarch perl-Time-HiRes.x86_64 perl-Parallel-ForkManager 
+                      perl-Log-Dispatch-Perl.noarch perl-DBD-MySQL ncftp perl-DBI.x86
+                    > rpm -ivh mha4mysql-manager-0.57-0.el7.noarch.rpm
+                    
+                7.在节点1(主数据库中)将建立进行主从管理数据库用户
+                    mysql> grant all privileges on *.* to 'mha’ @‘192.168.3.%' identified by '123456';
+                    
+                8.在监控服务器配置参数
+                    > vim 
+                    
+                        [server default]
+                        user=mha  (我们需要在主数据库中建立的，用于MHA来进行主从管理的数据库用户)
+                        password=123456
+                        manager_workdir=/home/mysql_mha  (管理mha的工作目录)
+                        manager_log=/home/mysql_mha/manager.log  (建立一个管理mha的log)
+                        remote_workdir=/home/mysql_mha  (这是对其他远程服务器工作目录，其他服务器上一定要有/home/mysql_mha目录)
+                        ssh_user=root
+                        repl_user=jame  (主从复制账号)
+                        repl_password=123456
+                        ping_interval=1  (监控服务对主数据库进行每1秒的心跳检测)
+                        master_binlog_dir=/home/mysql/binlog  (这时主数据binlog存放目录 通过 show variables like '%log%')
                 
                 
         
