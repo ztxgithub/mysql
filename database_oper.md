@@ -269,6 +269,9 @@
             
     *.查看主数据库的状态
         mysql> show master status \G;
+      
+    *.在从数据库上查看主数据库的信息
+        mysql> show slave status \G;
      
 ```
 

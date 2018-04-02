@@ -567,21 +567,73 @@
                     mysql> grant all privileges on *.* to 'mha’ @‘192.168.3.%' identified by '123456';
                     
                 8.在监控服务器配置参数
-                    > vim 
+                    > vim /etc/mha/mysql_mha.cnf
                     
-                        [server default]
-                        user=mha  (我们需要在主数据库中建立的，用于MHA来进行主从管理的数据库用户)
-                        password=123456
-                        manager_workdir=/home/mysql_mha  (管理mha的工作目录)
-                        manager_log=/home/mysql_mha/manager.log  (建立一个管理mha的log)
-                        remote_workdir=/home/mysql_mha  (这是对其他远程服务器工作目录，其他服务器上一定要有/home/mysql_mha目录)
-                        ssh_user=root
-                        repl_user=jame  (主从复制账号)
-                        repl_password=123456
-                        ping_interval=1  (监控服务对主数据库进行每1秒的心跳检测)
-                        master_binlog_dir=/home/mysql/binlog  (这时主数据binlog存放目录 通过 show variables like '%log%')
+                    [server default]
+                    user=mha  (我们需要在主数据库中建立的，用于MHA来进行主从管理的数据库用户)
+                    password=123456
+                    manager_workdir=/home/mysql_mha  (管理mha的工作目录)
+                    manager_log=/home/mysql_mha/manager.log  (建立一个管理mha的log)
+                    remote_workdir=/home/mysql_mha  (这是对其他远程服务器工作目录，其他服务器上一定要有/home/mysql_mha目录)
+                    ssh_user=root
+                    repl_user=jame  (主从复制账号)
+                    repl_password=123456
+                    ping_interval=1  (监控服务对主数据库进行每1秒的心跳检测)
+                    master_binlog_dir=/home/mysql/binlog  (这时主数据binlog存放目录 通过 show variables like '%log%')
+                    master_ip_failover_script=/usr/bin/master_ip_failover (指定一个脚本，在主从切换时，将vip漂移到新的主数据库中)
+                    secondary_check_script=/usr/bin/masterha_secondary_check -s 192.168.3.100 -s 192.168.3.101
+                                           -s 192.168.3.102  (对各个数据库服务器进行健康检测，防止抖动情况)
+                                           
+                    [server1]
+                    hostname=192.168.3.100
+                    candidate_master=1  (这说明这个服务器可以参与主数据库选举)
+                    
+                    [server2]
+                    hostname=192.168.3.101
+                    candidate_master=1  (这说明这个服务器可以参与主数据库选举)
+                    
+                    [server3]
+                    hostname=192.168.3.102
+                    no_master=1  (这说明这个服务器不参与主数据库选举)
+                    
+                9.在监控服务器验证ssh免认证是否正确
+                    > masterha_check_ssh --conf=/etc/mha/mysql_mha.cnf
+                    
+                10.在监控服务器集群中的复制链路是否正确
+                    > masterha_check_repl --conf=/etc/mha/mysql_mha.cnf
+                    
+                11.在监控服务器启动mha
+                    > nohup masterha_manager --conf=/etc/mha/mysql_mha.cnf &
+                    
+                12.在主数据库(节点一)手动配置vip
+                    > ifconfig eth0:1 192.168.3.90/24
+                    
+                13.对MHA架构进行测试
+                    A. 把数据库的服务停掉（看是否进行故障转移和vip漂移，主从复制链路是否被切换）
+                        > /etc/init.d/mysqld stop
+                        
+        
+    5.MHA架构的优点
+            1.使用Perl脚本语言开发及完全开源
+            2.支持基于GTID的复制模式
+            3.MHA在进行故障转移时更不易产生数据丢失
+            4.同一个监控节点可以监控多个集群
+                并对不同的复制集群分别进行不同的切换操作，对于有多组有集群的系统减少监控的成本
                 
+    6.MHA架构的缺点
+        1. 需要编写脚本或则利用第三方工具(keepalive)来实现vip的配置
+                MHA在默认情况下并不会给主数据库服务器增加vip,如果使用了keepalive工具则又会失去了自动从多个从服务器选举新的主服务器
+                的功能，而且增加集群部署的复杂性，如果自己开发接口需要对MHA程序本身比较熟悉，增加了MHA工具使用的复杂性，另外
+                MHA的接口只提供了在主DB服务器上加vip的功能，不能对从服务器加vip，当某一台从DB出现问题时也不能主动把它从集群中
+                剔除，从这点看不如MMM架构的
                 
+        2.MHA在启动后只会对主数据库进行监控
+            在MHA中无法发现复制链路的问题，比如复制链路中断，或则主从延迟增加，无法像MMM架构出现复制链路中断通过切换读vip的方式
+            来排除出问题的从服务器
+            
+        3.需要基于SSH免认证配置，存在一定的安全隐患
+        
+        4.没有提供从服务器的读负载均衡的功能
         
 
 ```
