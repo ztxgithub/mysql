@@ -272,6 +272,9 @@
       
     *.在从数据库上查看主数据库的信息
         mysql> show slave status \G;
+        
+    *.在主数据库上查看从数据库的信息
+        mysql> show slave hosts;
      
 ```
 

@@ -67,5 +67,41 @@
                 有2种路由模块，是readconnroute和readwritesplit，其中readconnroute路由是用来实现多台服务器读负载均衡的，
                 而readwritesplit则是实现读写分离的
                 
+        (4) Monitor 监控插件
+                用于MaxScale用于后端数据库进行实施监控，以便MaxScale可以将前段的请求发送到正确的后台数据库中，正确的后台数据库
+                是指可以正常对外提供服务的数据库，通过这个模块对主从延迟的监控
+                
+        (5) Filter&Logging 日志和过滤插件
+                提供了简单的数据库防火墙的功能，可以对某些SQL进行过滤和改写，可以进行简单的SQL容错和语句的自动转换
+                
+    2.安装
+        (1) 下载安装包（在监控服务器上安装MaxScale）
+                > wget https://downloads.mariadb.com/enterprise/fre6-c9jr/mariadb-maxscale/1.3.0/rhel/6/x86_64/
+                              maxscale-1.3.0-1.rhel6.x86_64.rpm
+                              
+                > yum intall -y libaio.x86_64 libaio-devel.x86_64 novacom-server.x86_64
+                > rpm -ivh maxscale-1.3.0-1.rhel6.x86_64.rpm
+                
+    3.实际部署
+        (1) 节点1 192.168.3.100 从服务器
+            节点2 192.168.3.101 主服务器
+            节点3 192.168.3.102 从服务器
+            监控服务器(安装MaxScale)
+            
+        A. 在主数据库上建立用于MaxScale监控模块的账号
+             I.创建用户
+                 mysql> create user ‘scale_monitor’ @ ‘192.168.3.%' identified by '123456';
+             II.授权
+                mysql> grant replication slave,replication client on *.* to 'scale_monitor’ @ ‘192.168.3.%';
+                    其中 replication slave 是一种权限类型,需要完成主从复制的监控
+                    
+        B.在主数据库上建立用于MaxScale路由模块的账号
+            I.创建用户
+                mysql> create user ‘scale_route’ @ ‘192.168.3.%' identified by '123456';
+            II.授权
+                mysql> grant select on mysql.* to 'scale_monitor’ @ ‘192.168.3.%';
+                其中 replication slave 是一种权限类型,需要读取MySQL的账号信息
+         
+                
           
 ```
