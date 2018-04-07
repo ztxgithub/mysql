@@ -100,7 +100,73 @@
                 mysql> create user ‘scale_route’ @ ‘192.168.3.%' identified by '123456';
             II.授权
                 mysql> grant select on mysql.* to 'scale_monitor’ @ ‘192.168.3.%';
-                其中 replication slave 是一种权限类型,需要读取MySQL的账号信息
+                
+        可选
+        在监控服务器上对密码进行加密
+            I.生成加密秘钥
+                > maxkeys
+            II.对密码进行加密
+                > maxpasswd (.secrets file 所在的目录) 要加密的密码
+                例如：
+                > maxpasswd /var/lib/maxscale/ 123456
+                
+        C.在监控服务器中修改maxscale配置文件
+            > vim /etc/maxscale.cnf
+                [maxscale]
+                threads=4   (maxscale的线程数)
+                
+                [server1]
+                type=server
+                address=192.168.3.100
+                port=3306
+                protocol=MySQLBackend
+                
+                [server2]
+                type=server
+                address=192.168.3.101
+                port=3306
+                protocol=MySQLBackend
+                
+                [server3]
+                type=server
+                address=192.168.3.102
+                port=3306
+                protocol=MySQLBackend
+                
+                [MySQL Monitor]
+                type=monitor
+                module=mysqlmon
+                servers=server1,server2,server3  (对服务器进行监控)
+                user=scale_monitor
+                passwd=123456  (这里是明文，如果有通过maxkeys，maxpasswd进行加密，则填写的是加密后的字符串)
+                monitor_interval=10000   (监控的时间间隔，单位是ms)
+                
+                [Read-Write Service]
+                type=server
+                router=readwritesplit
+                servers=server1,server2,server3
+                user=scale_route
+                passwd=123456  (这里是明文，如果有通过maxkeys，maxpasswd进行加密，则填写的是加密后的字符串)
+                max_slave_connections=100% (将从服务器加入到读负载的最大范围，100%代表所有从服务器都进行读负载均衡)
+                max_slave_replication_lag=60 (单位秒，如果延时超过60秒，则将该从服务器剔除读的负载均衡中)
+                
+                把[Read-Only Listener] 删掉
+                把[Read-Only Service] 删掉
+                
+        D. 启动maxscale
+            > maxscale --config=/etc/maxscale.cnf
+            
+        E.登陆maxscale管理界面登陆
+            > maxadmin --user=admin --password=mariadb
+            结果
+                Maxscale>    (其maxscale管理界面命令)
+                
+                I 在maxscale管理界面中查看启动那些服务器
+                    Maxscale>list servers;
+                II. 
+                    Maxscale>show dbusers "Read-Write Service";
+                
+                
          
                 
           
