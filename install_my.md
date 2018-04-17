@@ -40,3 +40,15 @@
 
 [参考资料](https://github.com/jaywcjlove/mysql-tutorial/blob/master/chapter2/2.2.md)
 
+# 安装演示数据库
+
+```shell
+
+     1.下载演示数据库
+        > wget http://downloads.mysql.com/docs/sakila-db.tar.gz
+     2.解压文件
+        >  tar -xvf sakila-db.tar.gz
+     3.导入数据库
+        > mysql -uroot -p < sakila-schema.sql (记录了数据库的表结构)
+        > mysql -uroot -p < sakila-data.sql
+```
