@@ -180,6 +180,24 @@
 
     *.查看某个表的信息
         mysql> desc 表名;
+        
+    *.查看查询计划
+        mysql> explain select 列名 from 表名 where 条件；
+        
+        实例：
+            mysql> explain select language_id from film where language_id=1\G
+        结果:
+                       id: 1
+              select_type: SIMPLE
+                    table: film
+                     type: ref
+            possible_keys: idx_fk_language_id
+                      key: idx_fk_language_id
+                  key_len: 1
+                      ref: const
+                     rows: 1000
+                    Extra: Using index
+            1 row in set (0.00 sec)
                 
     *.查看表的定义
         mysql> show create table 表名;
