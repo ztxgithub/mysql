@@ -208,5 +208,222 @@
                     如果查询中存在双%的过滤条件，就无法使用覆盖索引，这时MySQL存储引擎的api所限制的，对这样的查询，MySQL只能
                     提供数据行的值然后在内存中再进行过滤
                     
-         
+         实例：
+            (1) mysql> explain select language_id from film where language_id=1\G;
+                结果：
+                *************************** 1. row ***************************
+                           id: 1
+                  select_type: SIMPLE
+                        table: film
+                         type: ref
+                possible_keys: idx_fk_language_id
+                          key: idx_fk_language_id
+                      key_len: 1
+                          ref: const
+                         rows: 1000
+                        Extra: Using index
+                        
+            (2) mysql> explain select * from film where language_id=1\G;
+                这个查询不能使用覆盖索引，而必须把数据放到内存中，再进行where条件的过滤，对与select * 的查询是无法使用覆盖索引覆盖的
+                结果：
+                    *************************** 1. row ***************************
+                               id: 1
+                      select_type: SIMPLE
+                            table: film
+                             type: ALL
+                    possible_keys: idx_fk_language_id
+                              key: NULL
+                          key_len: NULL
+                              ref: NULL
+                             rows: 1000
+                            Extra: Using where  (不能从索引中获取数据的，不能使用覆盖索引)
+                    1 row in set (0.00 sec)
+                    
+            (3) mysql> explain select actor_id,last_name from actor where last_name='Joe'\G;
+                使用到了覆盖索引，在innodb索引上，会自动将主键加入到聚合索引上
+                *************************** 1. row ***************************
+                           id: 1
+                  select_type: SIMPLE
+                        table: actor
+                         type: ref
+                possible_keys: idx_actor_last_name
+                          key: idx_actor_last_name
+                      key_len: 137
+                          ref: const
+                         rows: 1
+                        Extra: Using where; Using index
+                1 row in set (0.00 sec)
+                       
+```
+
+## 使用索引来优化查询
+
+```shell
+    1.使用索引扫描来优化排序
+        如果explain查询计划中的type为index，则说明MySQL使用索引扫描来进行排序，使用索引扫描排序时，只需要将一条索引记录移动到下一条
+        索引记录，通常来说是很快的，如果想利用索引扫描方式优化查询并不太容易
+        
+        需要的条件
+            (1) 索引的列顺序和Order By子句的顺序完全一致
+                    UNIQUE KEY `rental_index` (`rental_date`,`inventory_id`,`customer_id`),
+                     mysql> select * from rental where rental_date='2005-05-09' order by inventory_id,customer_id\G ;
+            (2) 索引中所有列方向(升序，降序)和Order By 子句方向完全一致
+            (3) Order By中的字段全部在关联表中第一张表中
+            
+        实例:
+            
+            A. 在innodb中数据的逻辑顺序和主键顺序是一致的，可以利用主键进行排序
+                mysql> explain select * from rental where rental_date>'2005-01-01' order by rental_id\G ;
+                *************************** 1. row ***************************
+                           id: 1
+                  select_type: SIMPLE
+                        table: rental
+                         type: index (索引进行排序)
+                possible_keys: rental_date
+                          key: PRIMARY
+                      key_len: 4
+                          ref: NULL
+                         rows: 16005
+                        Extra: Using where(使用主键进行排序)
+                1 row in set (0.00 sec)
+                
+            B. 在MyISAM存储引擎中
+               *************************** 1. row ***************************
+                          id: 1
+                 select_type: SIMPLE
+                       table: rental_myisam
+                        type: ALL
+               possible_keys: rental_date
+                         key: NULL
+                     key_len: NULL
+                         ref: NULL
+                        rows: 16044
+                       Extra: Using where;Using filesort(使用文件进行排序)
+                       
+            C. mysql> explain select * from rental where rental_date='2005-05-09' order by inventory_id,customer_id\G ;
+              使用到二级索引进行排序 
+               *************************** 1. row ***************************
+                          id: 1
+                 select_type: SIMPLE
+                       table: rental
+                        type: ref
+               possible_keys: rental_date
+                         key: rental_date
+                     key_len: 5
+                         ref: const
+                        rows: 1
+                       Extra: Using where
+               1 row in set (0.00 sec)
+               
+            D.mysql> explain select * from rental where rental_date='2005-05-09' order by inventory_id desc,customer_id\G ; 
+              索引中所有列方向(升序，降序)和Order By 子句方向完全一致
+              *************************** 1. row ***************************
+                         id: 1
+                select_type: SIMPLE
+                      table: rental
+                       type: ref
+              possible_keys: rental_date
+                        key: rental_date
+                    key_len: 5
+                        ref: const
+                       rows: 1
+                      Extra: Using where; Using filesort(使用文件进行排序而不是索引排序)
+                      
+            E.mysql> explain select * from rental where rental_date>'2005-05-09' order by inventory_id,customer_id\G ; 
+              如果查询中有某个列的范围查询，则其右边所有列都无法使用索引,这是针对联合索引而言的
+              
+              *************************** 1. row ***************************
+                         id: 1
+                select_type: SIMPLE
+                      table: rental
+                       type: ALL
+              possible_keys: rental_date
+                        key: NULL
+                    key_len: NULL
+                        ref: NULL
+                       rows: 16005
+                      Extra: Using where; Using filesort
+                      
+              因为rental_date是联合索引最左边的列(第一列)，一旦使用这列的范围查找，其联合索引右边的2列会失效，
+              这样也是无法使用索引排序
+              
+              
+    2.模拟Hash索引优化查询
+    
+            符合条件:
+                (1) 只能处理键值的全值匹配查找
+                (2) 所使用的Hash函数决定这索引键的大小
+                        如果我们所使用的Hash函数对应值太大，就会造成索引比较大的情况
+                        既不能生成太大的hash值，也不能造成太多的hash冲突
+            如果我们想要在很长的字符串进行查找，只能使用前缀索引，这样使得索引的可选择性非常差，可以通过B-tree索引来模拟Hash索引
+            
+            实例：在title列是255字符的字符串，如果正常使用索引的化可以得使用前缀索引，导致可选择性差，可以新建一列title_md5
+                 进行模拟Hash索引
+            
+            (1) mysql> alter table film add title_md5 varchar(32);
+            (2) mysql> update film set title_md5=md5(title);
+            (3) mysql> create index idx_md5 on film(title_md5);
+            (4) mysql> explain select * from film where title_md5=md5('EGG IGBY') and title='EGG IGBY'\G ;
+                where中2个条件是为了避免hash冲突
+                *************************** 1. row ***************************
+                           id: 1
+                  select_type: SIMPLE
+                        table: film
+                         type: ref
+                possible_keys: idx_title,idx_md5
+                          key: idx_title
+                      key_len: 767
+                          ref: const
+                         rows: 1
+                        Extra: Using index condition; Using where
+                        
+                        
+    3.利用索引优化锁
+           (1) 索引可以减少锁定的行数
+                通过索引我们可以在存储引擎层过滤掉我们所不需要的行，就能够更好的利用索引，减少锁带来的开销
+                
+           (2) 索引可以加快处理速度，同时也加快锁的释放
+                    我们只需要对很少的行进行处理，而不是要把所有数据都加载到内存中
+                    
+           实例:
+                在connection1中
+                
+               A. mysql> explain select * from actor where  last_name='WOOD'\G ;
+                    没有使用到任何的索引，Extra: Using where 是要把数据加载到内存中，再进行过滤
+                    *************************** 1. row ***************************
+                               id: 1
+                      select_type: SIMPLE
+                            table: actor
+                             type: ALL
+                    possible_keys: NULL
+                              key: NULL
+                          key_len: NULL
+                              ref: NULL
+                             rows: 200
+                            Extra: Using where
+                            
+               B. 开始事务
+                   mysql> begin ;
+               C. 进行查询事务，占排它锁
+                   其中for update 代表显式调用排他锁
+                   mysql> select * from actor where last_name='WOOD' for update;
+                   +----------+------------+-----------+---------------------+
+                   | actor_id | first_name | last_name | last_update         |
+                   +----------+------------+-----------+---------------------+
+                   |       13 | UMA        | WOOD      | 2006-02-15 04:34:33 |
+                   |      156 | FAY        | WOOD      | 2006-02-15 04:34:33 |
+                   +----------+------------+-----------+---------------------+
+                   
+               在connection2中进行查询事务
+               D.开始事务
+                    mysql> begin ;
+                    
+               E. 进行查询事务，占排它锁（其中for update 代表显式调用排他锁）
+                    mysql> select * from actor where last_name='Willis' for update; 
+                    这个时候程序阻塞了，在connection2中虽然查询的不同的last_name，但是connection2还是被connection1
+                    阻塞了，说明connection1只需要2行数据，但是把整个表锁住了
+               
+               
+            
+            
 ```

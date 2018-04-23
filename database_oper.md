@@ -240,6 +240,7 @@
         mysql> create index 索引名 on 表名(列名); 使用了默认索引类型
         mysql> create index 索引名 using btree on 表名(列名); 使用了BTree索引类型
         mysql> show index from 表名；
+        mysql> drop index 索引名 on 表名；
         
     *.查看mysql系统变量
         mysql> show variables like 'innodb_file_per_table';
@@ -293,6 +294,11 @@
         
     *.在主数据库上查看从数据库的信息
         mysql> show slave hosts;
+        
+    *.事务操作
+        mysql> begin;
+        mysql>commit;
+        mysql>rollback;
      
 ```
 
