@@ -405,7 +405,7 @@
                B. 开始事务
                    mysql> begin ;
                C. 进行查询事务，占排它锁
-                   其中for update 代表显式调用排他锁
+                   其中for update 代表显式调用排他锁,并且在 last_name 列上没有索引
                    mysql> select * from actor where last_name='WOOD' for update;
                    +----------+------------+-----------+---------------------+
                    | actor_id | first_name | last_name | last_update         |
@@ -418,12 +418,83 @@
                D.开始事务
                     mysql> begin ;
                     
-               E. 进行查询事务，占排它锁（其中for update 代表显式调用排他锁）
+               E. 进行查询事务，占排它锁（其中for update 代表显式调用排他锁），并且在 last_name 列上没有索引
                     mysql> select * from actor where last_name='Willis' for update; 
+                    
                     这个时候程序阻塞了，在connection2中虽然查询的不同的last_name，但是connection2还是被connection1
                     阻塞了，说明connection1只需要2行数据，但是把整个表锁住了
-               
-               
+                    
+               F. 将connection1和connection2都进行事务回滚
+                    mysql>rollback;
+               G. 在last_name列上新加索引
+                    mysql> create index idx_lastname on actor(last_name);
+               H. 再进行查询计划
+                    mysql> explain select * from actor where  last_name='WOOD'\G ;
+                    *************************** 1. row ***************************
+                               id: 1
+                      select_type: SIMPLE
+                            table: actor
+                             type: ref
+                    possible_keys: idx_lastname
+                              key: idx_lastname
+                          key_len: 137
+                              ref: const
+                             rows: 2
+                            Extra: Using index condition (使用索引进行查询)
+                    1 row in set (0.01 sec)
+                    
+               再进行排它锁测试
+               I. 在connection1中
+                    (1) mysql> begin ;
+                    (2) mysql> select * from actor where last_name='Willis' for update; (进行排它锁查询)
+                    
+               J. 在connection2中
+                      (1) mysql> begin ;
+                      (2) mysql> select * from actor where last_name='WOOD' for update; (进行排它锁查询)
+                       这个时候有数据产生，不会堵塞。
+                       +----------+------------+-----------+---------------------+
+                       | actor_id | first_name | last_name | last_update         |
+                       +----------+------------+-----------+---------------------+
+                       |       83 | BEN        | WILLIS    | 2006-02-15 04:34:33 |
+                       |       96 | GENE       | WILLIS    | 2006-02-15 04:34:33 |
+                       |      164 | HUMPHREY   | WILLIS    | 2006-02-15 04:34:33 |
+                       +----------+------------+-----------+---------------------+
+                       但是如果where中last_name为Willis，则也会阻塞，行级锁       
+```
+
+## 索引的维护和优化
+
+```shell
+    在相同的列上建立多个索引，MySQL都需要单独的维护这些索引，并且在优化器优化查询的过程中还要逐个对这些索引进行选择，这无疑会
+    影响数据库的性能。
+    
+    维护和优化方法:
+    
+        1.删除重复和冗余的索引
+            如果我们在同一个表中建立，3个索引主键索引(primary key(id)), 唯一索引(unique key(id)), 单列索引(index(id)),
+            那么这些则叫做重复索引，对应MySQL来说，实际上主键就是为非空的索引，所以在id列上建立主键就没有必要建立唯一索引，更
+            没有必要在id列上建立二级索引。
             
+            冗余索引：
+               (1) 第一种情况
+                    index(a),index(a,b) 建立了联合索引(a列和b列)，又在a列上建立索引。
+                    但是有时候如果a列经常被查询，则会有意得进行冗余索引，
+                    
+               (2) 第二种情况
+                        primary key(id)， index(a,id)
+                        主要是不了解innodb存储引擎B-tree存储结构，每一个二级索引后面都会增加主键信息，所以为了优化查询，把
+                        主键也加入到二级索引中，这不太合适
+                        
+        2.查找未被使用过的索引
+            mysql> select object_schema,object_name,index_name,
+                   b.`TABLE_ROWS` FROM performance_schema.table_io_waits_summary_by_index_usage a 
+                   JOIN information_schema.tables b ON a.`OBJECT_SCHEMA`=`TABLE_SCHEMA` AND
+                    a.`OBJECT_NAME`=b.`TABLE_NAME` where index_name IS NOT NULL AND count_star=0 
+                    ORDER BY object_schema,object_name;
             
+        3.更新索引的统计信息及减少索引的碎片
+            MySQL的查询优化器根据索引的统计信息来决定使用哪个索引优化查询，如果表中的统计信息不准确，优化器可能做出错误的判断，
+                        
+             更新索引的统计信息 ： mysql> analyze table 表名
+             更新索引的碎片： mysql> optimize table 表名  使用不当会导致锁表，
 ```
