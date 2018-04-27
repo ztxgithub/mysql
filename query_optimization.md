@@ -182,9 +182,99 @@
     1.使用profile
         步骤:
             A. mysql> set profiling =1  启动profiling功能，这是session级的配置。只有在当前session下才能有作用。
-            B 执行想要优化的查询
-            C show profiles; 查看每一查询所消耗的总时间的信息
-            D show profile for query N(SQL的query id值)
+            B 执行想要优化的查询 (例如: mysql> select count(*) from film;)
+            C mysql>  show profiles; 查看每一查询所消耗的总时间的信息
+                结果:
+                    +----------+------------+-----------------------------------+
+                    | Query_ID | Duration   | Query                             |
+                    +----------+------------+-----------------------------------+
+                    |        1 | 0.00048075 | show variables like '%profiling%' |
+                    |        2 | 0.00047650 | select count(*) from film         |
+                    +----------+------------+-----------------------------------+
+            D mysql> show profile for query N(SQL的query id值)
+                结果:
+                    mysql> show profile for query 1;
+                    +----------------------+----------+
+                    | Status               | Duration |
+                    +----------------------+----------+
+                    | starting             | 0.000063 |
+                    | checking permissions | 0.000010 |
+                    | Opening tables       | 0.000043 |
+                    | init                 | 0.000013 |
+                    | System lock          | 0.000005 |
+                    | optimizing           | 0.000005 |
+                    | statistics           | 0.000013 |
+                    | preparing            | 0.000012 |
+                    | executing            | 0.000252 |
+                    | Sending data         | 0.000019 |
+                    | end                  | 0.000005 |
+                    | query end            | 0.000003 |
+                    | closing tables       | 0.000003 |
+                    | removing tmp table   | 0.000006 |
+                    | closing tables       | 0.000004 |
+                    | freeing items        | 0.000013 |
+                    | cleaning up          | 0.000013 |
+                    +----------------------+----------+
+                    
+            E  mysql> show profile cpu for query N(SQL的query id值)
+                结果:
+                    mysql> show profile cpu for query 1;
+                    +----------------------+----------+----------+------------+
+                    | Status               | Duration | CPU_user | CPU_system |
+                    +----------------------+----------+----------+------------+
+                    | starting             | 0.000063 | 0.000003 |   0.000045 |
+                    | checking permissions | 0.000010 | 0.000001 |   0.000009 |
+                    | Opening tables       | 0.000043 | 0.000002 |   0.000041 |
+                    | init                 | 0.000013 | 0.000001 |   0.000011 |
+                    | System lock          | 0.000005 | 0.000000 |   0.000005 |
+                    | optimizing           | 0.000005 | 0.000000 |   0.000005 |
+                    | statistics           | 0.000013 | 0.000001 |   0.000012 |
+                    | preparing            | 0.000012 | 0.000001 |   0.000011 |
+                    | executing            | 0.000252 | 0.000014 |   0.000238 |
+                    | Sending data         | 0.000019 | 0.000001 |   0.000018 |
+                    | end                  | 0.000005 | 0.000000 |   0.000004 |
+                    | query end            | 0.000003 | 0.000000 |   0.000003 |
+                    | closing tables       | 0.000003 | 0.000000 |   0.000002 |
+                    | removing tmp table   | 0.000006 | 0.000001 |   0.000006 |
+                    | closing tables       | 0.000004 | 0.000000 |   0.000004 |
+                    | freeing items        | 0.000013 | 0.000001 |   0.000013 |
+                    | cleaning up          | 0.000013 | 0.000000 |   0.000011 |
+                    +----------------------+----------+----------+------------+
+                    17 rows in set, 1 warning (0.00 sec)
+                    
+            F. 查看警告信息 (mysql> show warnings;)
+                结果:
+                    | Warning | 1287 | 'SHOW PROFILE' is deprecated and will be removed in a future release. 
+                    Please use Performance Schema instead |
+                    
+    2.使用Performance Schema
+        A.启动监控信息
+            mysql> use performance_schema;
+            mysql> update setup_instruments set enabled='YES',TIMED='YES' where name like 'stage%';
+            mydql> update setup_consumers set enabled='YES' where name like 'events%'; (启动Performance Schema历史记录)
             
-
+            其对数据库全局是有效的，可以分析数据库中每一个线程所执行的sql性能问题，
+            
+        B 执行SQL语句
+            mysql> select count(*) from sakila.film;
+            
+        C.
+            mysql> SELECT a.THREAD_ID,SQL_TEXT,c.EVENT_NAME,(c.TIMER_END - c.TIMER_START)/1000000000 AS'DURATION (ms)'
+                   FROM events_statements_history_long a
+                   JOIN threads b ON a.`THREAD_ID`=b.`THREAD_ID`
+                   JOIN events_stages_history_long c ON c.`THREAD_ID`=b.`THREAD_ID`
+                   AND c.`EVENT_ID` BETWEEN a.EVENT_ID AND a.END_EVENT_ID
+                   WHERE b.`PROCESSLIST_ID`=CONNECTION_ID()
+                   AND a.EVENT_NAME='statement/sql/select'
+                   ORDER BY a.THREAD_ID,c.EVENT_ID
+                                 
+                                 
+            实例：
+                mysql> SELECT a.THREAD_ID,SQL_TEXT,c.EVENT_NAME,(c.TIMER_END - c.TIMER_START)/1000000000 AS'DURATION (ms)'
+                                   FROM events_statements_history_long a
+                                   JOIN threads b ON a.`THREAD_ID`=b.`THREAD_ID`
+                                   JOIN events_stages_history_long c ON c.`THREAD_ID`=b.`THREAD_ID`
+                                   AND c.`EVENT_ID` BETWEEN a.EVENT_ID AND a.END_EVENT_ID
+                                   ORDER BY a.THREAD_ID,c.EVENT_ID；
+                   只要将PROCESSLIST_ID修改为 对应的 CONNECTION_ID就可以了
 ```
