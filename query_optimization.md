@@ -278,3 +278,100 @@
                                    ORDER BY a.THREAD_ID,c.EVENT_ID；
                    只要将PROCESSLIST_ID修改为 对应的 CONNECTION_ID就可以了
 ```
+
+## 特定SQL的查询优化
+
+```shell
+    1.大表的数据修改最好要分批处理(不然会带来长时间的阻塞)
+        如果我们要在1000万行记录的表中删除/更新100万行记录，那么我们最好分成多个批次删除，一次只删除/更新5000行记录，
+        为了减少主从复制同步带来的压力，我们在每次修改数据后先暂停几秒，已给主从复制集群提供一个同步数据的时间
+        
+        
+        大表的更新和删除
+            delimiter $$
+            use `imocc`$$
+            drop procedure if exists `p_delete_rows`$$
+            create definer=`root`@`127.0.0.1` procedure `p_delete_rows`()
+            begin
+                declare v_rows int;
+                set v_rows = 1
+                while v_rows > 0
+                do
+                    只要修改下面一行就可以了
+                    delete from sbtet1 where id >= 90000 and id <= 190000 limit 5000;
+                    
+                    select ROW_COUNT() INTO v_rows;
+                    select sleep(5);
+                end while;
+                
+            end$$
+            delimiter ;
+            
+    2.如何修改大表的表结构
+        A.直接修改大表的表结构带来的影响
+            (1) 对表中的列的字段类型进行修改和改变字段的宽度 会造成锁表。
+            (2) 无法解决主从数据库延迟的问题
+            
+        B 解决方法:
+            方法一: 先在从服务器上修改表结构，然后再进行主从切换，最后在老的主服务器上修改表结构。
+                       使用这种方法需要进行主从切换，所以还是存在一定风险
+                       
+            方法二: 在主服务器上建立一个新表，新表结构就是要更改后的表的结构，再把老表的数据导入到新表中，并且在老表中建立一系列的
+                   触发器，把老表中数据修改同步更新到新表中，当老表和新表数据同步后，老表加一个排它锁，然后重新命名新表的名字，
+                   删除老表。
+                   
+                   好处：即使尽量减少主从延迟，以及可以在重命名之前不用加任何的锁，只是在重命名的时候加一个短暂的
+                        锁，这对应用不会造成太大的影响
+                   缺点: 操作比较复杂
+                   
+                   工具:
+                        pt-online-schema-change 
+                        --alter="MODIFY c(列名) VARCHAR(150) NOT NULL DEFAULT ‘’"
+                        --user=root --password=PassWord D=imooc,t=sbtest4
+                        --charset=utf8 --execute
+                        参数:
+                            D:数据库  t:表名
+                            
+    3.如何优化not in 和 < >查询(不等于的查询)
+        MySQL查询优化器能够自动把一些子查询中优化为关联查询，对于存在not in 和 < > 的查询就无法进行自动优化，这就造成了循环多次
+        来查找子表来确认是否满足过滤条件，如果子查询恰好是很大的表的，这样做的效率会非常低
+        
+        例子:
+            mysql> select customer_id,first_name,last_name,email
+                   from customer where customer_id NOT IN (select customer_id from payment)
+                    
+            需要对customer表中每一个customer_id到payment表中去查询看是否有过交费记录，会多次对payment表进行查询
+            
+            优化后的SQL
+            mysql> select a.customer_id,a.first_name,a.last_name,a.email
+                   from customer a
+                   left join payment b ON a.customer_id = b.customer_id
+                   where b.customer_id IS NULL
+                   
+                   这样对left join 进行关联，这样可以避免对表进行多次查询
+                   
+    4.使用汇总表优化查询
+        在网站上常见对商品进行统计，如果我们在用户访问商品页面时实时去统计商品的评论数，
+            通常来说查询的SQL如下:
+                mysql> select count(*) from product_comment where product_id = 999
+                该SQL的作用是统计出product_id为999的所有评论，如果我们评论表中有上亿记录，那么这个SQL执行起来显然非常慢，
+                特别是有大量并发访问情况下则会对数据库造成很大的压力
+                
+            优化：使用汇总表优化，提前 以要统计的数据进行汇总并记录到表中以备后续的查询使用
+                (1) 先建立一张统计表 
+                        mysql> create table product_comment_cnt(product_id INT, cnt INT)
+                        
+                     可以每天凌晨进行维护统计出截止到前一天 每一个商品评论的汇总
+                        
+                (2) 
+                    mysql> select sum(cnt) from (
+                           select cnt from product_comment_cnt where product_id = 999
+                           union all
+                           select count(*) from product_comment where product_id = 999
+                           and timestr>DATE(NOW())
+                           )
+                       
+        
+            
+
+```
