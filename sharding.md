@@ -93,8 +93,92 @@
                 所以可以通过缓存的方式进行缓存
                 
     7.如何生成全局唯一ID
+        (1) 使用auto_increment_incremnet和auto_increment_offset参数(2个结合起来)
+                使用auto_increment_incremnet在表中生成唯一ID，auto_increment_incremnet的值要和分片节点的数量相同，
+                auto_increment_increment = 2 (增加步长，一次增加多少值，在使用主主复制时，一台按1,3,5.
+                                                                              另外一台2,4,6， 不会ID冲突)
+                auto_increment_offset = 1|2 (这个决定了自增ID从哪个开始，默认从1开始，在使用主主复制时，需要将
+                                             一台设置为1，另外一台设置为2)
+                                             
+            这种方式只适用于一个节点中只保存一套分区表情况，如果一个节点中保存多套分区表，在同一个节点中相同的分区表所生成的ID还是会
+            出现冲突。
+            
+        (2) 使用全局节点来生成ID
+            配置一个全局节点ID，并在这个节点中建立相应的表来使用auto_increment的属性来生成自增ID，应用程序先通过这个全局表取
+            唯一ID后，再通过分区函数把数据插入到不同的分片中，缺点是 全局节点会成为数据库的瓶颈。
+            
+        (3) 在Redis等缓存服务器中创建全局ID
+                使用Redis等缓存服务器来代替全局节点ID，Redis读写效率要远高于MySQL数据库，
+```
+
+## 数据库分片演示
+
+```shell
+    1.一个数据库中有订单表，订单商品表，分类表，需要对订单表和订单商品表进行分区。
+    2.分片工具
+        > wget http://www.onexsoft.cn/software/oneproxy-rhel6-linux64-v5.8.1-ga.tar.gz
         
-                
-                
+    3.节点1 第一个分片节点 192.168.3.100
+      节点2 第二个分片节点 192.168.3.101
+      节点3 oneproxy节点(进行分片的工具) 192.168.3.102
+      
+    4.配置节点3 oneproxy
+        (1) 修改 /home/soft/oneproxy/demo.sh 内容
         
+                 export ONEPROXY_HOME=/home/soft/oneproxy/
+                 
+        (2) 在节点1创建用户:
+                I.创建用户
+                    mysql> create user ‘用户名’ @ ‘允许使用的ip网段' identified by '密码'
+                    例如
+                     mysql> create user ‘jame’ @ ‘192.168.3.%' identified by '123456';
+                     
+                II.创建数据库
+                       mysql> create database orders;
+                III.授权
+                    mysql> grant all privileges on orders.* to 用户名’ @ ‘允许使用的ip网段'
+                    其中 all privileges 是所有的权限
+                    例如
+                       mysql> grant all privileges on orders.* to 'jame’ @ ‘192.168.3.%';
+                   
+        (3) 在节点2建立相同的用户:
+                 I.创建用户
+                    mysql> create user ‘用户名’ @ ‘允许使用的ip网段' identified by '密码'
+                    例如
+                     mysql> create user ‘jame’ @ ‘192.168.3.%' identified by '123456';
+                     
+                II.创建数据库
+                       mysql> create database orders;
+                III.授权
+                    mysql> grant all privileges on orders.* to 用户名’ @ ‘允许使用的ip网段'
+                    其中 all privileges 是所有的权限
+                    例如
+                       mysql> grant all privileges on orders.* to 'jame’ @ ‘192.168.3.%';
+                       
+                
+                 
+        (4) 修改 /home/soft/oneproxy/conf/proxy.conf
+                [oneproxy]
+                    keepalive = 1 保证oneproxy在后台运行的
+                    event-threads = 4 指定线程的数量
+                    proxy-address = :3306  (监控的端口)
+                    
+                    proxy-master-addresses.1   = 192.168.3.100:3306@order01  监控的第一个节点
+                    proxy-master-addresses.2   = 192.168.3.101:3306@order02  监控的第二个节点
+                    
+                    proxy-user-list            = test/1378F6CC3A8E8A43CA388193FBED5405982FBBD3@jame
+                                                 用户名/加密后的密码/数据库
+                                                 
+                    proxy-part-template        = conf/order_part.txt  自定义的配置
+                    proxy-group-policy    = order01:master-only  节点1名
+                    proxy-group-policy    = order02:master-only  节点2名
+                                                 
+                A. 先运行一下/home/soft/oneproxy/demo.sh来获取加密后的密码
+                B. 
+                    (1) > mysql -P4041 -uadmin -pOneProxy -h127.0.0.1
+                    (2) mysql> passwd "123456";
+                    结果获得了123456加密字符串，写入到/home/soft/oneproxy/conf/proxy.conf中
+                    
+                
+
 ```
