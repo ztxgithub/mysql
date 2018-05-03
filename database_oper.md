@@ -218,11 +218,31 @@
         mysql> insert into 表名(列名1，列名2) values(xxxx,xxx);    
                     
     *.修改表结构
-            1. mysql> alter table 表名 modify 列名 数据类型
+            1. 修改列的属性(数据类型)
+                mysql> alter table 表名 modify 列名 数据类型
                 例如：
                 mysql> alter table t_time modify data_tm datetime(6),modify timestamp_tm timestamp(6); (修改时间精确到毫秒)
                 
-            2. mysql> alter table 表名 add 列名 数据类型
+            2. 增加列
+                mysql> alter table 表名 add 列名 数据类型 [first|after col_name]
+                    (1) mysql> alter table actor add age int ; 默认会增加到表的最后一列
+                    (2) mysql> alter table actor add age int first ; 增加到表的第一列
+                    
+                    (3) mysql> alter table actor add age int after first_name ; 
+                           将新增列(age)插入到first_name列名的后面
+                    
+            3.删除列
+                mysql> alter table 表名 drop 列名1,drop 列名2;
+                
+            4.修改列名
+                mysql> alter table 表名 change 原来的列名 新的列名 数据类型 [first|after col_name];
+                例如:
+                    mysql> alter table actor change first_name fst_name varchar(45) after last_name;
+                    将原来first_name列名改为fst_name,并在last_name列后面
+            
+    *.对数据库表进行重命名
+            1.mysql> alter table 原来的表名 rename {TO|AS} 新的表名;  to和as都可以
+            2.mysql> rename table 原来的表名 to 新的表名; 
         
     *.flush 命令 (mysql> flush flush_option ;)
         (1) mysql> flush HOSTS;
@@ -323,4 +343,55 @@
                 --triggers ：备份触发器
                 --all-databases：备份所有数据库(包括系统数据库)，这就要求还原的MySQL版本与备份版本要一致
      
+```
+
+## 信息函数
+
+```shell
+    1.VERSION():返回数据库的版本号
+        mysql> select version();
+        结果:
+            +-----------+
+            | version() |
+            +-----------+
+            | 5.6.40    |
+            +-----------+
+            
+    2.connection_id() 连接id :当前连接的ID
+          mysql> select connection_id();
+          结果:
+              +-----------------+
+              | connection_id() |
+              +-----------------+
+              |               6 |
+              +-----------------+
+              
+    3.database() 当前数据库
+        mysql> select database();
+        结果:
+            +------------+
+            | database() |
+            +------------+
+            | sakila     |
+            +------------+
+
+    4.user() 当前用户
+        mysql> select user();
+        结果:用户名@登录主机
+            +----------------+
+            | user()         |
+            +----------------+
+            | root@localhost |
+            +----------------+
+            
+    5.last_insert_id() 返回最近生成的AUTO_INCREMENT值
+       注意: 插入多条记录时，只会显示插入第一条的id而不是最后一条ID
+       mysql> select last_insert_id();
+       结果:
+           +------------------+
+           | last_insert_id() |
+           +------------------+
+           |              202 |
+           +------------------+
+
 ```
