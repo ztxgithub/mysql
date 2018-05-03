@@ -178,7 +178,117 @@
                     (1) > mysql -P4041 -uadmin -pOneProxy -h127.0.0.1
                     (2) mysql> passwd "123456";
                     结果获得了123456加密字符串，写入到/home/soft/oneproxy/conf/proxy.conf中
-                    
                 
+        (5) 修改分区表的分区方式
+                    
+                [
+                	#完成订单表的分区
+                	{
+                		"table":"order_detail",   #分区表表名
+                		"pkey":"order_id",   #分区键
+                		"type":"int"  #分区键类型
+                		"method":"hash"  #分区的方式(hash方式) 
+                		"partitions" :        #分区的存储 方式
+                		[
+                			#建立2个分片，在分片1中使用0来当它的后缀
+                			 {"suffix":"_0","group":"order01"}  #属于order01组 ，在order01中所有分片表都要加上_0
+                			 {"suffix":"_1","group":"order02"}
+                		]
+                	},
+                		#完成订单商品表的分区
+                	{
+                		"table":"order_product",   #分区表表名
+                		"pkey":"order_id",   #分区键
+                		"type":"int"  #分区键类型
+                		"method":"hash"  #分区的方式(hash方式) 
+                		"partitions" :        #分区的存储 方式
+                		[
+                			#建立2个分片，在分片1中使用0来当它的后缀
+                			 {"suffix":"_0","group":"order01"}  #属于order01组 ，在order01中所有分片表都要加上_0
+                			 {"suffix":"_1","group":"order02"}
+                		]
+                	},
+                	##分类目录表，不需要分区
+                	 {
+                		"table":"category",   #分区表表名
+                		"pkey":"id",   #分区键
+                		"type":"int"  #分区键类型
+                		"method":"global"  #分区的方式(hash方式) 
+                		"partitions" :        #分区的存储 方式
+                		[ 
+                			 {"group":"order01"}  #不需要分区
+                			 {"group":"order02"}
+                		]
+                	} 
+                ]
+                
+        (6) 在节点1中
+                mysql> use orders;
+                mysql> create table order_detail_0(order_id int not null,
+                								  add_time datetime not null, 
+                								  order_amount decimal(6,2),
+                								  primary key (order_id));
+                								  
+                mysql> create table order_product_0(order_id int not null,
+                								    order_product_id int not null,
+                								    primary key(order_id));
+                								    
+                创建全局的非分片表
+                mysql> create table category(id int not null,
+                							category_name varchar(10),
+                							primary key(id)); 
+                							
+        (7) 在节点2
+                mysql> use orders;
+                mysql> create table order_detail_1(order_id int not null,
+                                                  add_time datetime not null, 
+                                                  order_amount decimal(6,2),
+                                                  primary key (order_id));
+                                                  
+                mysql> create table order_product_1(order_id int not null,
+                                                    order_product_id int not null,
+                                                    primary key(order_id));
+                                                    
+                创建全局的非分片表
+                mysql> create table category(id int not null,
+                                            category_name varchar(10),
+                                            primary key(id)); 
+                                            
+        (8) 重启oneproxy
+                > ./demo.sh
+        (9) 进入oneproxy配置页面
+            > mysql -P4041 -h127.0.0.1 -uadmin -pOnePrxoy
+                A. 查看后台服务
+                    mysql> list backend;
+                B. 查看后台的配置是否正确
+                    mysql> list tables;
+        (10) 编写测试脚本
+             #通过oneproxy进行代理，只需要逻辑表
+                #!/bin/bash
+                order_id=2
+                while :
+                do
+                   order_id=`echo $order_id+1| bc`
+                   sql="insert into order_detail(order_id,add_time,order_amount,user_name,user_tel) values(${order_id},now(),100,'wyjs','123456')";
+                   echo $sql | mysql -utest -p123456 -P3307 -h10.103.9.101
+                
+                   sql2="insert into order_product(order_id,product_id) values(${order_id},${order_id})"
+                   echo $sql2 | mysql -utest -p123456 -P3307 -h10.103.9.101
+                
+                   sql3="insert into category(id,name) values(${order_id},'wyjs')"
+                   echo $sql3 | mysql -utest -p123456 -P3307 -h10.103.9.101
+                   
+                
+                done
+                
+        (11) 进入oneproxy配置页面
+                 > mysql -P4041 -h127.0.0.1 -uadmin -pOnePrxoy
+                     A. 查看逻辑表
+                         mysql> select count(*) from order_detail;
+                         mysql> select count(*) from order_product;
+                     B. 查看物理表
+                         mysql> select count(*) from order_detail_1;
+                         mysql> select count(*) from order_product_1;
+
 
 ```
