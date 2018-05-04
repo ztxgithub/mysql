@@ -213,6 +213,12 @@
             mysql> create table local_fed(id int, c1 varchar(10)) engine=federated connnection=
                     'mysql://用户名:密码@远程服务器ip:远程服务器端口号/远程服务器数据库名/远程服务器表名'；
                     
+        (3) 创建数据表的同时将查询结果写入到新创建数据表
+                mysql> create table if not exists 表名(create_definetion) select_statement
+                例如:
+                mysql> create table tall_tb( id SMALLINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
+                                             hight INT) select 身高 AS hight FROM persion GROUP BY 身高;
+                    
     *.插入数据
         mysql> insert into 表名 values(xxx,xxx),(yyy,yyy);  //支持插入多条记录
         mysql> insert into 表名(列名1，列名2) values(xxxx,xxx);    
@@ -393,5 +399,57 @@
            +------------------+
            |              202 |
            +------------------+
+
+```
+
+## 加密函数
+
+```shell
+    1.Password(str)加密(加密函数是不可逆)
+            经常用于对用户注册的密码进行加密处理,mysql用户需要设置密码,用户不能将未加密的密码直接存储在mysql数据库的user表中去.
+            因为登陆mysql数据库时，数据库系统会将你输入的密码先通过Password（str）函数进行加密，然后再与数据库中的密码进行比较,
+            匹配成功才可以登录
+        mysql> select password("abcd");
+        结果:
+              +-------------------------------------------+
+              | password("abcd")                          |
+              +-------------------------------------------+
+              | *A154C52565E9E7F94BFC08A1FE702624ED8EFFDA |
+              +-------------------------------------------+
+              
+    2.MD5(str)加密函数(加密函数是不可逆)
+            MD5函数是将一个任意长度的字符串变换成一个一定长的十六进制数字串
+            
+        mysql> select md5("abcd");
+        结果
+        +----------------------------------+
+        | md5("abcd")                      |
+        +----------------------------------+
+        | e2fc714c4727ee9395f324cd2e7f331f |
+        +----------------------------------+
+        
+        例如:
+            mysql> insert int tb_user(u_name,u_pass) values('test', md5('123456'));
+        
+    3.encode("被加密的字符串","秘钥")函数(可逆的)
+        加密:
+            mysql> select encode("test","key");
+            结果:
+            +----------------------+
+            | encode("test","key") |
+            +----------------------+
+            |                   |
+            +----------------------+
+            
+        解密:
+            mysql> select decode(encode("test","key"),"key");
+            结果:
+            +------------------------------------+
+            | decode(encode("test","key"),"key") |
+            +------------------------------------+
+            | test                               |
+            +------------------------------------+
+        例如:
+           mysql> insert into pass_info(id,pass_info) values(2,ENCODE("wujinfan","king"))
 
 ```
