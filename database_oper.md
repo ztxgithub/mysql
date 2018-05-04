@@ -222,6 +222,11 @@
     *.插入数据
         mysql> insert into 表名 values(xxx,xxx),(yyy,yyy);  //支持插入多条记录
         mysql> insert into 表名(列名1，列名2) values(xxxx,xxx);    
+        
+    *.删除数据
+        mysql> delete from 表名 where 条件
+        例如:
+            mysql> delete from t1 where t1id = 1 and t1str = 4;
                     
     *.修改表结构
             1. 修改列的属性(数据类型)
@@ -452,4 +457,9 @@
         例如:
            mysql> insert into pass_info(id,pass_info) values(2,ENCODE("wujinfan","king"))
 
+```
+
+## 查询
+```shell
+    1.select distinct 列名 from 表名; 获取不重复的列的数据
 ```
