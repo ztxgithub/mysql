@@ -288,7 +288,7 @@
                          mysql> select count(*) from order_product;
                      B. 查看物理表
                          mysql> select count(*) from order_detail_1;
-                         mysql> select count(*) from order_product_1;
+                         mysql> select count(*) from order_product_1; 
 
 
 ```
