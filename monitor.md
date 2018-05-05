@@ -153,3 +153,63 @@
             +-----------------+----------------------------+--------------+-----------+--------------+
 ```
 
+## 主从复制监控
+
+```shell
+    1.如何对主从复制进行监控
+        A.如何监控主从复制链路的状态
+            实际上是监控从服务SQL线程是否正确运行，
+            mysql> show slave status \G;
+            结果:
+                Slave_IO_Running: Yes
+                Slave_SQL_Running: Yes
+        B.如何监控主从复制延迟
+            如果发现从服务器之间延迟持续增大，需要进行检查。
+            第一种方法:
+                不太准确，这个值是根据到从服务器上的主服务器binlog 已经在从服务器上重新执行过的binlog日志之间的时间差
+                不准确原因 (1) 当网络出现问题时，主服务器上还有大量的binlog还没有同步到从服务器上。
+                          (2) 已经同步到从服务器上的binglog已经完全被 从服务器同步完
+                mysql> show slave status \G;
+                结果：
+                    Seconds_Behind_Master:0  与主服务器延迟的秒数
+                    
+            第二种方法:
+                需要使用多线程的程序 同时对于主从服务器的状态来进行检查
+                (1) 在主服务器上执行 show master status 命令来获取主服务器上二进制日志名和偏移量
+                    mysql> show master status\G;
+                    结果:
+                        File:mysql-bin.001083
+                        Position:3023201
+                        
+                (2) 在从服务器上执行 show slave status 
+                    mysql> show slave status\G;
+                    结果:
+                        File:mysql-bin.001083
+                        Read_Master_Log_Pos:3021201
+                        已经传输完成的主服务器上binlog的名字和偏移量
+                        Exec_Master_Log_Pos:3021201
+                        Relay_Log_Space:3021601
+                        
+            
+        当每次修复完主从复制时，都要检查主从复制数据的一致性
+        C.如何检查主从复制数据的一致性
+        
+            (1) > pt-table-checksum u=dba,p='密码' --databases 数据库名 --replicate test.checksums
+              参数：
+                    u:检查数据库的账号
+                    p：对应的密码
+                    只需要在主数据库上运行就可以了
+                例如:
+                > pt-table-checksum u=dba,p='123456' --databases mysql --replicate test.checksums
+                创建账号及授权
+                 I.创建用户
+                    mysql> create user ‘用户名’ @ ‘允许使用的ip网段' identified by '密码'
+                    例如
+                     mysql> create user ‘dba’ @ ‘192.168.3.%' identified by '123456';
+                 II. 授权
+                    mysql> grant select,process,super,replication slave on *.* to 'dba' @ '192.168.3.%' 
+                           identified by '123456'
+              
+                    
+```
+
