@@ -626,6 +626,6 @@
              bind-address       = 0.0.0.0
     2.授权
         mysql> grant all PRIVILEGES on *.* to  root@'%'  identified by '密码' WITH GRANT OPTION;
-        mysql>flush privileges;
+        mysql>flush privileges ;
         
 ```
