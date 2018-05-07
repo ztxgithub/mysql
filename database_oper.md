@@ -198,6 +198,33 @@
                      rows: 1000
                     Extra: Using index
             1 row in set (0.00 sec)
+            
+        用explain extended语句后可以通过show warnings查看一条SQL语句的反编译的结果,
+        让我们知道我们输入的一条SQL语句真正是怎么执行的.
+        参数:
+        
+            select_type：表示select类型,常见的取值有SIMPLE（不使用表连接或子查询）,PRIMARY（主查询，即外层的查询）,
+                         UNION（UNION中的或者后面的查询语句）,SUBQUERY（子查询中的第一个select）等。
+        
+            table：输出结果集的表   
+            type：表示表的连接类型，性能由好到差的连接类型为system（表中仅有一行，即常量表）,
+                                 const(单表中最多有一个匹配行,例如PRIMARY KEY或者UNIQUE INDEX）、
+                                 eq_ref（对于前面的每一行，在此表中只查询一条记录，简单来说，
+                                         就是多表连接中使用PRIMARYKEY或者UNIQUE INDEX）、
+                                         ref（与eq_ref类似，区别在于不使用PRIMARYKEY或者UNIQUE INDEX，而是使用普通的索引）
+                                         ref_of_null（与ref类似，区别在于条件中包含对NULL的查询）、
+                                         index_merge（索引合并化）、
+                                         unique_subquery（in的后面是一个查询主键字段的子查询）、
+                                         index_subquery（与unique_subquery类似，区别在于in的后面是查询非唯一索引字段的子查询）
+                                         range（单表中的范围查询）
+                                         index（对于前面的每一行都通过查询索引来得到数据）
+                                         all（对于前面的每一行的都通过全表扫描来获得数据）
+        
+            possible_keys：表示查询时，可能使用到的索引。
+            key：表示实际使用的索引
+            key_len：索引字段的长度
+            rows：扫描行的数量
+            extra：执行情况的说明和描述。
                 
     *.查看表的定义
         mysql> show create table 表名;
@@ -487,4 +514,7 @@
         mysql> select CEILING('123.456')
         结果:
             124
+            
+    2.order by : 默认是从小到大(升序)
+        mysql > select * from 表名 order by 列名 desc limit 1; 从大到小(降序)限制一条记录
 ```
