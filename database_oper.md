@@ -198,6 +198,33 @@
                      rows: 1000
                     Extra: Using index
             1 row in set (0.00 sec)
+            
+        用explain extended语句后可以通过show warnings查看一条SQL语句的反编译的结果,
+        让我们知道我们输入的一条SQL语句真正是怎么执行的.
+        参数:
+        
+            select_type：表示select类型,常见的取值有SIMPLE（不使用表连接或子查询）,PRIMARY（主查询，即外层的查询）,
+                         UNION（UNION中的或者后面的查询语句）,SUBQUERY（子查询中的第一个select）等。
+        
+            table：输出结果集的表   
+            type：表示表的连接类型，性能由好到差的连接类型为system（表中仅有一行，即常量表）,
+                                 const(单表中最多有一个匹配行,例如PRIMARY KEY或者UNIQUE INDEX）、
+                                 eq_ref（对于前面的每一行，在此表中只查询一条记录，简单来说，
+                                         就是多表连接中使用PRIMARYKEY或者UNIQUE INDEX）、
+                                         ref（与eq_ref类似，区别在于不使用PRIMARYKEY或者UNIQUE INDEX，而是使用普通的索引）
+                                         ref_of_null（与ref类似，区别在于条件中包含对NULL的查询）、
+                                         index_merge（索引合并化）、
+                                         unique_subquery（in的后面是一个查询主键字段的子查询）、
+                                         index_subquery（与unique_subquery类似，区别在于in的后面是查询非唯一索引字段的子查询）
+                                         range（单表中的范围查询）
+                                         index（对于前面的每一行都通过查询索引来得到数据）
+                                         all（对于前面的每一行的都通过全表扫描来获得数据）
+        
+            possible_keys：表示查询时，可能使用到的索引。
+            key：表示实际使用的索引
+            key_len：索引字段的长度
+            rows：扫描行的数量
+            extra：执行情况的说明和描述。
                 
     *.查看表的定义
         mysql> show create table 表名;
@@ -459,7 +486,171 @@
 
 ```
 
+## 取整函数
+
+```shell
+    1.
+        (1) ROUND(X) : 将值 X 四舍五入为整数，无小数位
+                mysql> select ROUND('123.456')
+                结果:
+                    123
+        (2)  ROUND(X,D) :保留D位小数点,采用四舍五入方法
+                mysql> select ROUND('123.654',2)
+                结果:
+                    123.65
+                    
+    2.FLOOR(X)表示向下取整,只返回值X的整数部分,小数部分舍弃
+        mysql>select FLOOR('123.654')
+        结果:
+            123
+            
+    3.CEILING(X) 表示向上取整,只返回值X的整数部分(整数部分加一),小数部分舍弃
+        
+```
+
 ## 查询
 ```shell
     1.select distinct 列名 from 表名; 获取不重复的列的数据
+        mysql> select CEILING('123.456')
+        结果:
+            124
+            
+    2.order by : 默认是从小到大(升序)
+        mysql > select * from 表名 order by 列名 desc limit 1; 从大到小(降序)限制一条记录
+```
+
+## 字符串函数
+
+```shell
+    1.lower(column|str)：将字符串参数值 全部转换为 小写字母后返回
+      upper(column|str)：将字符串参数值 全部转换为 大写字母后返回
+      
+    2.字符串连接
+        (A)concat(column|str1, column|str2,...)：将多个字符串参数首尾相连后返回
+            (1) 如果有任何参数为null,则函数返回null
+            (2) 如果参数是数字，则自动转换为字符串
+                    mysql> select concat(14.3,'mysql');
+                    结果:
+                        +----------------------+
+                        | concat(14.3,'mysql') |
+                        +----------------------+
+                        | 14.3mysql            |
+                        +----------------------+
+        (B) concat_ws(separator,str1,str2,...)：将多个字符串参数以给定的分隔符separator首尾相连后返回
+                mysql> select concat_ws(';','First name','Second name','Last name');
+                结果:
+                    +-------------------------------------------------------+
+                    | concat_ws(';','First name','Second name','Last name') |
+                    +-------------------------------------------------------+
+                    | First name;Second name;Last name                      |
+                    +-------------------------------------------------------+
+                    
+                (1) 如果有任何参数为null，则函数不返回null，而是直接忽略它
+                        mysql> select concat_ws(',','id',null,'name');
+                        结果:
+                            +---------------------------------+
+                            | concat_ws(',','id',null,'name') |
+                            +---------------------------------+
+                            | id,name                         |
+                            +---------------------------------+
+                            
+    3.substr(str,pos[,len])：从源字符串str中的指定位置pos开始取一个字串并返回
+        mysql> select substring('hello world',5);
+        +----------------------------+
+        | substring('hello world',5) |
+        +----------------------------+
+        | o world                    |
+        +----------------------------+
+        
+        mysql> select substr('hello world',5,3);
+        +---------------------------+
+        | substr('hello world',5,3) |
+        +---------------------------+
+        | o w                       |
+        +---------------------------+
+        
+        mysql> select substr('hello world',-5);
+        +--------------------------+
+        | substr('hello world',-5) |
+        +--------------------------+
+        | world                    |
+        +--------------------------+
+        
+    4.length(str)：返回字符串的存储长度(字节数)
+        mysql> select length('text'),length('你好');
+        +----------------+------------------+
+        | length('text') | length('你好')   |
+        +----------------+------------------+
+        |              4 |                6 |
+        +----------------+------------------+
+        
+    5.char_length(str)：返回字符串中的字符个数
+        mysql> select char_length('text'),char_length('你好');
+        结果:
+            +---------------------+-----------------------+
+            | char_length('text') | char_length('你好')   |
+            +---------------------+-----------------------+
+            |                   4 |                     2 |
+            +---------------------+-----------------------+
+            
+    6.lpad(str, len, padstr)：将padstr+str进行拼接
+                              如果 padstr+str 长度 超过 len,则还是 padstr+str
+                              如果 padstr+str 长度 小于 len,则一直用padstr填充,直到padstr+padstr+str等于len
+                              
+          mysql> select lpad('h',7,'?!!!');
+          +--------------------+
+          | lpad('h',7,'?!!!') |
+          +--------------------+
+          | ?!!!?!h            |
+          +--------------------+
+          
+      rpad(str, len, padstr)：将str+padstr进行拼接
+                              如果 str+padstr 长度 超过 len,则还是 str+padstr
+                              如果 str+padstr 长度 小于 len,则一直用padstr填充,直到str+padstr+padstr等于len
+                              
+    7.trim([{BOTH | LEADING | TRAILING} [remstr] FROM] str)
+        (1)从源字符串str中去掉两端、前缀或后缀字符remstr并返回；
+        (2)如果不指定remstr，则去掉str两端的空格；
+        (3)不指定BOTH,LEADING,TRAILING ，则默认为 BOTH。
+        
+        mysql> select trim(leading 'x' from 'xxxbarxxx');
+        +------------------------------------+
+        | trim(leading 'x' from 'xxxbarxxx') |
+        +------------------------------------+
+        | barxxx                             |
+        +------------------------------------+
+        
+    8.replace(str, from_str, to_str)：在源字符串str中查找所有的子串form_str（大小写敏感）,
+                                      找到后使用替代字符串to_str替换它
+                                      
+       mysql> select replace('www.mysql.com','w','Ww');
+       结果:
+           +-----------------------------------+
+           | replace('www.mysql.com','w','Ww') |
+           +-----------------------------------+
+           | WwWwWw.mysql.com                  |
+           +-----------------------------------+
+           
+      (1) ltrim(str),rtrim(str)：去掉字符串的左边或右边的空格(左对齐、右对齐)
+           
+    9.repeat(str, count)：将字符串str重复count次后返回
+        mysql> select repeat('MySQL',3);
+        +-------------------+
+        | repeat('MySQL',3) |
+        +-------------------+
+        | MySQLMySQLMySQL   |
+        +-------------------+
+        
+    10.reverse(str)：将字符串str反转后返回
+        mysql> select reverse('abcdef');
+        +-------------------+
+        | reverse('abcdef') |
+        +-------------------+
+        | fedcba            |
+        +-------------------+
+        
+    11.
+        (1) left(str, len)：返回最左边的len长度的子串
+        (2) right(str, len)：返回最右边的len长度的子串
+        
 ```
