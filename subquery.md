@@ -56,6 +56,14 @@
                     | Kremlin Collectables, Co.      |
                     | Raanan Stores, Inc             |
                     +--------------------------------+
+                    
+    3. FROM子句中的MySQL子查询
+            在FROM子句中使用子查询时,从子查询返回的结果集将用作临时表. 该表称为派生表或物化子查询
+            查找订单表中的最大，最小和平均数:
+            
+                mysql> select max(items),min(items),floor(avg(items)) from
+                       (select orderNumber , count(orderNumber) as items from orderdetails group by orderNumber) 
+                       as lineitems;
                 
 ```
 

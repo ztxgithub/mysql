@@ -459,7 +459,32 @@
 
 ```
 
+## 取整函数
+
+```shell
+    1.
+        (1) ROUND(X) : 将值 X 四舍五入为整数，无小数位
+                mysql> select ROUND('123.456')
+                结果:
+                    123
+        (2)  ROUND(X,D) :保留D位小数点,采用四舍五入方法
+                mysql> select ROUND('123.654',2)
+                结果:
+                    123.65
+                    
+    2.FLOOR(X)表示向下取整,只返回值X的整数部分,小数部分舍弃
+        mysql>select FLOOR('123.654')
+        结果:
+            123
+            
+    3.CEILING(X) 表示向上取整,只返回值X的整数部分(整数部分加一),小数部分舍弃
+        
+```
+
 ## 查询
 ```shell
     1.select distinct 列名 from 表名; 获取不重复的列的数据
+        mysql> select CEILING('123.456')
+        结果:
+            124
 ```
