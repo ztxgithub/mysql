@@ -486,28 +486,6 @@
 
 ```
 
-## 取整函数
-
-```shell
-    1.
-        (1) ROUND(X) : 将值 X 四舍五入为整数，无小数位
-                mysql> select ROUND('123.456')
-                结果:
-                    123
-        (2)  ROUND(X,D) :保留D位小数点,采用四舍五入方法
-                mysql> select ROUND('123.654',2)
-                结果:
-                    123.65
-                    
-    2.FLOOR(X)表示向下取整,只返回值X的整数部分,小数部分舍弃
-        mysql>select FLOOR('123.654')
-        结果:
-            123
-            
-    3.CEILING(X) 表示向上取整,只返回值X的整数部分(整数部分加一),小数部分舍弃
-        
-```
-
 ## 查询
 ```shell
     1.select distinct 列名 from 表名; 获取不重复的列的数据
@@ -653,4 +631,92 @@
         (1) left(str, len)：返回最左边的len长度的子串
         (2) right(str, len)：返回最右边的len长度的子串
         
+```
+
+## 数值运算符与函数
+
+```shell
+    1.取整函数
+        A.
+            (1) ROUND(X) : 将值 X 四舍五入为整数，无小数位
+                    mysql> select ROUND('123.456')
+                    结果:
+                        123
+            (2)  ROUND(X,D) :保留D位小数点,采用四舍五入方法
+                    mysql> select ROUND('123.654',2)
+                    结果:
+                        123.65
+                        
+        B.FLOOR(X)表示向下取整,只返回值X的整数部分,小数部分舍弃
+            mysql>select FLOOR('123.654')
+            结果:
+                123
+                
+        C.CEILING(X) 表示向上取整,只返回值X的整数部分(整数部分加一),小数部分舍弃
+        
+    2.truncate(x,y)返回数值x保留到小数点后y位的值（与ROUND最大的区别是不会进行四舍五入）
+        mysql> select truncate(3.14,1);
+        结果:
+            +------------------+
+            | truncate(3.14,1) |
+            +------------------+
+            |              3.1 |
+            +------------------+
+```
+
+## 比较运算符与函数
+
+```shell
+    1.[NOT] BETWEEN ... AND ...  :Check whether a value is within a range of values 
+      expr between min and max:
+        如果expr在min~max之间,返回1,否则返回0.
+        mysql> select 1 between 1 and 3; 
+        结果:
+            +-------------------+
+            | 1 between 1 and 3 |
+            +-------------------+
+            |                 1 |
+            +-------------------+
+            
+    2.coalesce(value1,...) ：返回第一个非NULL的参数
+         说明：返回列表中第一个非空值，如果没有非NULL值，则返回NULL
+         
+         mysql> select coalesce(NULL,1);
+         结果:
+             +------------------+
+             | coalesce(NULL,1) |
+             +------------------+
+             |                1 |
+             +------------------+
+             
+    3.greatest(value1,value2,...)
+        mysql> select greatest(1,2,3,'a');
+        结果:
+            +---------------------+
+            | greatest(1,2,3,'a') |
+            +---------------------+
+            | 3                   |
+            +---------------------+
+            
+    4.
+       (1) [NOT] IN()	[不]在列出的值范围内
+            mysql> select 2 in (1,2,'a');
+            结果:
+                +----------------+
+                | 2 in (1,2,'a') |
+                +----------------+
+                |              1 |
+                +----------------+
+                
+      (2) IS [NOT] NULL	[不]为空
+            mysql> select 1 IS NULL, 0 IS NULL, NULL IS NULL;
+            结果:
+                 0, 0, 1            
+
+```
+
+## 日期时间函数
+
+```shell
+    1.
 ```
