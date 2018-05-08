@@ -620,7 +620,7 @@
                       
 ```
 
-### ubuntu配置文件
+### ubuntu配置文件(外部的mysql客户端(其他ip而不是本机ip)连接到mysql服务器)
 ```shell
     1.> vim /etc/mysql/mysql.conf.d/mysqld.cnf
              bind-address       = 0.0.0.0
