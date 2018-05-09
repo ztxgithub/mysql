@@ -974,9 +974,73 @@
 ## 聚合函数
 
 ```shell
-    1.聚合函数(aggregation function)---也就是组函数
-    2.默认情况下，组函数忽略列值为null的行，不参与计算
-    3.使用关键字distinct剔除字段值重复的条数
-    4.组函数不允许嵌套,例如：count(max(…))；
 
+    1.概要:
+        (1).聚合函数(aggregation function)---也就是组函数
+        (2).默认情况下，组函数忽略列值为null的行，不参与计算
+        (3).使用关键字distinct剔除字段值重复的条数
+        (4).组函数不允许嵌套,例如：count(max(…))；
+        (5).组函数的参数可以是列或是函数表达式；
+        
+    2.相关函数
+        (1) count函数
+                A.count(*)：返回表中满足where条件的行的数量(没有条件，默认统计表数据行数)
+                    mysql> select count(*) from salary_tab;
+                    
+                B.count(列名)：返回 列值非空 的行的数量
+                    mysql> select count(salary) from salary_tab;
+                    结果:
+                        +---------------+
+                        | count(salary) |
+                        +---------------+
+                        |             4 |
+                        +---------------+
+                C.count(distinct 列名)：返回列值非空的、并且列值不重复的行的数量
+                
+        (2) max和min函数---统计列中的最大最小值
+        (3) sum和avg函数---求和 与 求平均 (表中列值为null的行不参与计算)
+```
+
+## 分组SELECT
+
+```shell
+    1.分组SELECT的基本格式：
+      
+      　　select [聚合函数] 字段名 from 表名
+            　　　　[where 查询条件]
+            　　　　[group by 字段名]
+            　　　　[having 过滤条件]
+
+         例如:
+            SELECT select_expr [, select_expr ...]
+            
+                [FROM table_references]
+            
+                [PARTITION partition_list]
+            
+                [WHERE where_condition]
+            
+                [GROUP BY {col_name | expr | position} [ASC | DESC], ... [WITH ROLLUP]]
+            
+                [HAVING where_condition]
+            
+                [ORDER BY {col_name | expr | position} [ASC | DESC], ...]
+            
+                [LIMIT {[offset,] row_count | row_count OFFSET offset}]
+                
+    2.group by子句
+        (1).group by按照xxx进行分组，它必须有“聚合函数”来配合才能使用，使用时至少需要一个分组标识字段
+        (2) 使用group by目的就是要将数据分组进行汇总操作
+        
+        (3) 以“dept_id(部门编号)”为分类标志统计各单位的职工人数和工资总额
+            mysql> select dept_id(部门编号),count(emp_id雇员编号),sum(salary工资) form employee  
+                   group by dept_id(部门编号);  
+                   
+    3.having 子句
+        (1) 为每一个组指定条件,像where指定条件一样,也就是说,可以根据你指定的条件来选择行.
+            如果你要使用HAVING子句的话,它必须处在GROUP BY子句之后
+            
+        (2) 以“dept_id”为分类标志统计各单位的职工人数和工资平均数且工资平均数大于4000
+            mysql> select dept_id(部门编号), avg(salary) FROM employee GROUP BY dept_id 
+                                                                      HAVING avg(salary) >= 4000;     
 ```
