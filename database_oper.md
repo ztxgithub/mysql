@@ -39,6 +39,33 @@
     # 解释：想要重新加载权限吗？输入 y 表示愿意。
 ```
 
+- 修改密码
+
+```shell
+    方法一:
+        用set password命令
+            mysql> set password for 'root'@'localhost' = password('123456');
+        
+    方法二:
+        用mysqladmin(mysqladmin -u用户名 -p旧密码 password 新密码)
+        > mysqladmin -uroot -p123456 password 1234abcd
+        
+    方法三:
+        用update直接编辑user表
+            (1) mysql> use mysql
+            (2) mysql> update user set PASSWORD = PASSWORD('1234abcd') where user = 'root';
+            (3) mysql> flush privileges;
+            
+    方法四:
+        不知道密码情况下
+            (1) > mysqld_safe --skip-grant-tables &
+            (2) > mysql -u root (这个时候不需要输入root密码)
+            (3) mysql> use mysql
+            (4) mysql> update user set PASSWORD = PASSWORD('1234abcd') where user = 'root';
+            (5) mysql> flush privileges;
+            
+```
+
 - 安装mysql命令行工具　mycli(https://github.com/dbcli/mycli)
 
 ```shell
@@ -344,6 +371,30 @@
         例如
            mysql> create user ‘jame’ @ ‘192.168.3.%' identified by '123456';
            
+    *.查看数据库用户
+        (1) 切换到mysql数据库
+                mysql> use mysql;
+        (2)
+            mysql> select host,user,password from user;
+            结果:
+                mysql> select host,user,password from user;
+                +-----------+------+----------+
+                | host      | user | password |
+                +-----------+------+----------+
+                | localhost | root |          |
+                | yytdtest  | root |          |
+                | 127.0.0.1 | root |          |
+                | ::1       | root |          |
+                | localhost |      |          |
+                | yytdtest  |      |          |
+                +-----------+------+----------+
+                
+    *.删除数据库用户      
+        mysql> drop user 'root'@'localhost';
+        
+    *.对用户账号进行重命名
+        mysql> rename user 'jack'@'%' to 'jim'@'%';
+        
     *.查看数据库中用户信息
         I. mysql> use mysql;
         II. mysql> select user,host from user;

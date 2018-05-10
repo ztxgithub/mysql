@@ -52,5 +52,35 @@
                 
                 备注：可以使用GRANT重复给用户添加权限，权限叠加，比如你先给用户添加一个select权限，
                       然后又给用户添加一个insert权限，那么该用户就同时拥有了select和insert权限。
+                      
+    2.刷新权限
+        在使用grant命令更新权限后,使用flush privileges立马生效
+        mysql> flush privileges;
+        
+    3.查看权限
+        (1)查看当前用户的权限：
+                mysql> show grants;
+                结果:
+                    +---------------------------------------------------------------------+
+                    | Grants for root@localhost                                           |
+                    +---------------------------------------------------------------------+
+                    | GRANT ALL PRIVILEGES ON *.* TO 'root'@'localhost' WITH GRANT OPTION |
+                    | GRANT PROXY ON ''@'' TO 'root'@'localhost' WITH GRANT OPTION        |
+                    +---------------------------------------------------------------------+
+                    
+        (2) 查看某个用户的权限
+                 A.mysql> select * from mysql.user where user='用户名' \G;
+                 B.mysql> show grants for 'root'@'localhost';
+                    结果:
+                   +---------------------------------------------------------------------+
+                   | Grants for root@localhost                                           |
+                   +---------------------------------------------------------------------+
+                   | GRANT ALL PRIVILEGES ON *.* TO 'root'@'localhost' WITH GRANT OPTION |
+                   | GRANT PROXY ON ''@'' TO 'root'@'localhost' WITH GRANT OPTION        |
+                   +---------------------------------------------------------------------+
+                   
+    4.回收权限
+        mysql> revoke delete on *.* from 'jack'@'localhost';(其中 'jack'@'localhost' 是一个整体)
+        
 ```
 
