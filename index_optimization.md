@@ -24,10 +24,12 @@
                 B. B-tree索引能够加快数据的查询速度,使用B-tree索引就不需要进行全表扫描来获取需要的数据，是从索引的根节点进行搜索，
                    逐一的向下进行查找，在innodb中叶子节点指向的主键，而在MyISAM中叶子节点指向的是物理地址
                 C. B-tree索引更适合进行范围查找。 其是顺序存储
+                D. 索引字段要尽量的小,通过真实的数据存在于叶子节点这个事实可知，IO次数取决于b+树的高度h,而
+                   每个磁盘块的数据项的数量(磁盘块的大小/一个数据项的大小)越大,则对应的b+树的高度h越小
             
         (2) 适合场景
                 A.全值匹配的查询 
-                B.匹配最左前缀的查询
+                B.匹配最左前缀的查询(很重要最左前缀匹配原则)
                     如果定义索引为联合索引(order_id,order_data)2列联合形成索引，需要查询order_id=1&&order_data=2018-1-1其用到
                     了索引，如果只查询order_id =2,则也会用到索引。
                     如果只查询order_data=2018-1-1则不会用到联合索引(order_id,order_data)。这就是最左前缀的查询
@@ -54,7 +56,7 @@
                     order_phone_number，那么对于这个查询来说，只能使用order_date这一列进行查询过滤，
                     而无法使用到order_phone_number这一列，因为我们的查询条件中跳过了 order_name 这一列
                     
-                C.Not in 和 < > 操作无法使用索引
+                C.Not in 和 < > (不等于)操作无法使用索引
                 
                 D.如果查询中有某个列的范围查询，则其右边所有列都无法使用索引
                     这是针对联合索引而言的
@@ -79,6 +81,40 @@
                 和维护的性能，所以说hash索引不适合用在选择性很差（键值列的重复值很多，比如性别）的列上，
                 比如身份证列是唯一的，比较合适用于hash索引
                     
+```
+
+## 数据库保存的索引的类型
+
+```shell
+    1.普通索引
+    2.唯一索引
+        索引列的值必须唯一,但允许有空值。如果是组合索引，则列值的组合必须唯一。它有以下几种创建方式：
+            (1) mysql> create unique index 索引名 on 表名(列名(length))
+            (2) 修改表结构
+                    mysql> alter table 表名 add unique 索引名 列名(length);
+            (3) 创建表的时候直接指定
+                
+                mysql> create table 表名( ID INT NOT NULL,   
+                                         username VARCHAR(16) NOT NULL,  
+                                         unique 索引名 (列名(length))  
+                 
+                                        );
+                                        
+    3.主键索引
+        它是一种特殊的唯一索引，不允许有空值。一般是在建表的时候同时创建主键索引
+            mysql> create table 表名(ID INT NOT NULL,   
+                                    username VARCHAR(16) NOT NULL,  
+                                    PRIMARY KEY(ID)  
+                                    );  
+                                    
+    4.组合索引
+        mysql> alter table 表名 add index 索引名(列名1, 列名2...)
+        
+    5.全文索引 fulltext
+        全文索引（也称全文检索）是目前搜索引擎使用的一种关键技术.它能够利用分词技术等多种算法智能分析出文本文字中
+        关键字词的频率及重要性,然后按照一定的算法规则智能地筛选出我们想要的搜索结果.
+        可以在创建表的时候指定，也可以修改表结构,如：
+        mysql> alter table 表名 add fulltext(列名)
 ```
 
 ## 索引的基本原理
@@ -460,6 +496,70 @@
                        |      164 | HUMPHREY   | WILLIS    | 2006-02-15 04:34:33 |
                        +----------+------------+-----------+---------------------+
                        但是如果where中last_name为Willis，则也会阻塞，行级锁       
+```
+
+## 常用其他索引优化
+
+```shell
+    1.避免 like的参数以通配符(%)开头
+        尽量避免like的参数以通配符开头,否则数据库引擎会放弃使用索引而进行全表扫描
+        
+    2.避免对字段进行null值判断
+        应尽量避免在where子句中对字段进行null值判断，否则将导致引擎放弃使用索引而进行全表扫描，如：
+            低效：select * from t_credit_detail where Flistid is null ;
+      
+        可以在Flistid上设置默认值0,确保表中Flistid列没有null值，然后这样查询：
+            高效：select * from t_credit_detail where Flistid =0;
+            
+    3.尽量使用or来连接条件
+      
+        应尽量避免在where子句中使用or来连接条件,否则将导致引擎放弃使用索引而进行全表扫描，如：
+            低效：select * from t_credit_detail where Flistid = '1234' or Flistid = '4567';
+      
+            可以用下面这样的查询代替上面的 or 查询：
+            高效：select * from t_credit_detail where Flistid = '1234' union all 
+                 select * from t_credit_detail where Flistid = '10000200001';
+                 
+    4.避免select *
+        在解析的过程中,会将'*' 依次转换成所有的列名,这个工作是通过查询数据字典完成的，这意味着将耗费更多的时间,
+        需要哪些列就取select哪些列
+        
+    5.order by 语句优化
+        任何在Order by语句的使用非索引项或者有计算表达式都将降低查询速度
+      
+        优化方法：
+                1.重写order by语句以使用索引；
+                2.为所使用的列建立另外一个索引
+                3.绝对避免在order by子句中使用表达式
+                
+    6.group by 语句优化
+        提高GROUP BY 语句的效率, 可以通过将不需要的记录在GROUP BY 之前过滤掉
+      
+      低效:
+        mysql> SELECT job , AVG(SAL) FROM EMP GROUP by job HAVING job = ‘PRESIDENT' or job = ‘MANAGER'
+      
+      高效:
+        mysql> SELECT job , AVG(SAL) FROM EMP WHERE job = ‘PRESIDENT' or JOB = ‘MANAGER' group by JOB
+        
+    7.使用 varchar/nvarchar 代替 char/nchar
+            尽可能的使用 varchar/nvarchar 代替 char/nchar ,因为首先变长字段存储空间小,可以节省存储空间,
+            其次对于查询来说，在一个相对较小的字段内搜索效率显然要高些
+            
+    8.能用 distinct 的就不用 group by
+            低效:
+                mysql> select OrderID FROM Details where UnitPrice > 10 GROUP BY OrderID
+                
+            高效:
+                mysql> select distinct OrderID FROM Details where UnitPrice > 10
+                
+    9.能用 union all 就不要用 union
+        union all  不执行 select distinct 函数，这样就会减少很多不必要的资源
+        
+    10. =和in可以乱序
+            比如a = 1 and b = 2 and c = 3 建立(a,b,c)索引可以任意顺序,
+            mysql的查询优化器会帮你优化成索引可以识别的形式
+            
+        
 ```
 
 ## 索引的维护和优化

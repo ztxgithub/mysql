@@ -240,14 +240,14 @@
                                  const(单表中最多有一个匹配行,例如PRIMARY KEY或者UNIQUE INDEX）、
                                  eq_ref（对于前面的每一行，在此表中只查询一条记录，简单来说，
                                          就是多表连接中使用PRIMARYKEY或者UNIQUE INDEX）、
-                                         ref（与eq_ref类似，区别在于不使用PRIMARYKEY或者UNIQUE INDEX，而是使用普通的索引）
-                                         ref_of_null（与ref类似，区别在于条件中包含对NULL的查询）、
-                                         index_merge（索引合并化）、
-                                         unique_subquery（in的后面是一个查询主键字段的子查询）、
-                                         index_subquery（与unique_subquery类似，区别在于in的后面是查询非唯一索引字段的子查询）
-                                         range（单表中的范围查询）
-                                         index（对于前面的每一行都通过查询索引来得到数据）
-                                         all（对于前面的每一行的都通过全表扫描来获得数据）
+                                 ref（与eq_ref类似，区别在于不使用PRIMARYKEY或者UNIQUE INDEX，而是使用普通的索引）
+                                 ref_of_null（与ref类似，区别在于条件中包含对NULL的查询）、
+                                 index_merge（索引合并化）、
+                                 unique_subquery（in的后面是一个查询主键字段的子查询）、
+                                 index_subquery（与unique_subquery类似，区别在于in的后面是查询非唯一索引字段的子查询）
+                                 range（单表中的范围查询）
+                                 index（对于前面的每一行都通过查询索引来得到数据）
+                                 all（对于前面的每一行的都通过全表扫描来获得数据）
         
             possible_keys：表示查询时，可能使用到的索引。
             key：表示实际使用的索引
@@ -275,7 +275,10 @@
                 mysql> create table tall_tb( id SMALLINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
                                              hight INT) select 身高 AS hight FROM persion GROUP BY 身高;
                                              
-                    
+        (4) 表名不能为"std"
+                                             
+    *.删除表
+        mysql> drop table 表名 ;
     *.插入数据
         (1) mysql> insert into 表名 values(xxx,xxx),(yyy,yyy);  //支持插入多条记录
         (2) mysql> insert into 表名(列名1，列名2) values(xxxx,xxx);  
@@ -337,6 +340,10 @@
         mysql> show index from 表名；
         mysql> drop index 索引名 on 表名；
         
+        如果该列的数据类型为char或则varchar,length可以小于字段实际长度；
+        如果是BLOB和TEXT类型，必须指定 length
+        mysql> create index 索引名 on 表名(列名(length));
+        
     *.查看mysql系统变量
         mysql> show variables like 'innodb_file_per_table';
         mysql> show variables where variable_name='wait_timeout' or variable_name='interactive_timeout';
@@ -367,6 +374,7 @@
         mysql> select count(*) from 表名;
        
     *.建立数据库用户
+        实际上可以省略用户名和主机名处的引号，但如果使用了通配符则引号不能省略
         mysql> create user ‘用户名’ @ ‘允许使用的ip网段' identified by '密码'
         例如
            mysql> create user ‘jame’ @ ‘192.168.3.%' identified by '123456';
@@ -390,7 +398,8 @@
                 +-----------+------+----------+
                 
     *.删除数据库用户      
-        mysql> drop user 'root'@'localhost';
+        (1) mysql> drop user 'root'@'localhost';
+        (2) mysql> drop user;
         
     *.对用户账号进行重命名
         mysql> rename user 'jack'@'%' to 'jim'@'%';
