@@ -122,6 +122,8 @@
 
     2.更加全面的方法
         mysql> create database if not exists test;
+        
+    3.mysql > create {database|SCHEMA} [if not exists] 数据库名 charcter set = 编码字符集(utf8);
      
 ```
 
@@ -245,11 +247,19 @@
                 例如:
                 mysql> create table tall_tb( id SMALLINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
                                              hight INT) select 身高 AS hight FROM persion GROUP BY 身高;
+                                             
                     
     *.插入数据
-        mysql> insert into 表名 values(xxx,xxx),(yyy,yyy);  //支持插入多条记录
-        mysql> insert into 表名(列名1，列名2) values(xxxx,xxx);    
-        
+        (1) mysql> insert into 表名 values(xxx,xxx),(yyy,yyy);  //支持插入多条记录
+        (2) mysql> insert into 表名(列名1，列名2) values(xxxx,xxx);  
+        (3) insert如果为自动编号的字段(比如主键id AUTO_INCREMENT)赋值的话,可对该列写为NULL
+            如果字段设置了DEFAULT(例如age TINYINT UNSIGNED NOT NULL DEFAULT 10,),那么值直接写DEFAULT就行,
+            注意此时，不能为NULL。例如：
+            mysql> insert into users values(NULL,'TOM','123',DEFAULT,1);
+            
+    *.更新数据
+        (1) mysql> update 表名 set 列名=值 where 筛选条件;
+
     *.删除数据
         mysql> delete from 表名 where 条件
         例如:
