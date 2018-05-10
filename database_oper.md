@@ -547,17 +547,6 @@
 
 ```
 
-## 查询
-```shell
-    1.select distinct 列名 from 表名; 获取不重复的列的数据
-        mysql> select CEILING('123.456')
-        结果:
-            124
-            
-    2.order by : 默认是从小到大(升序)
-        mysql > select * from 表名 order by 列名 desc limit 1; 从大到小(降序)限制一条记录
-```
-
 ## 字符串函数
 
 ```shell
@@ -1062,7 +1051,7 @@
         (3) sum和avg函数---求和 与 求平均 (表中列值为null的行不参与计算)
 ```
 
-## 分组SELECT
+## SELECT
 
 ```shell
     1.分组SELECT的基本格式：
@@ -1081,7 +1070,7 @@
             
                 [WHERE where_condition]
             
-                [GROUP BY {col_name | expr | position} [ASC | DESC], ... [WITH ROLLUP]]
+                [GROUP BY {col_name | expr | position} [ASC | DESC], ... [WITH ROLLUP]]  (ASC为升序,默认)
             
                 [HAVING where_condition]
             
@@ -1097,6 +1086,31 @@
             mysql> select dept_id(部门编号),count(emp_id雇员编号),sum(salary工资) form employee  
                    group by dept_id(部门编号);  
                    
+        (4) 
+            A. mysql> select * from t1;
+                结果:
+                    +------+-------+
+                    | t1id | t1str |
+                    +------+-------+
+                    |    1 | 1     |
+                    |    2 | 2     |
+                    |    3 | 3     |
+                    |    4 | 4     |
+                    |    5 | 1     |
+                    |    6 | 1     |
+                    +------+-------+
+                    
+            B. mysql> select * from t1 group by t1str;
+                结果:
+                   +------+-------+
+                   | t1id | t1str |
+                   +------+-------+
+                   |    1 | 1     |
+                   |    2 | 2     |
+                   |    3 | 3     |
+                   |    4 | 4     |
+                   +------+-------+
+                   
     3.having 子句
         (1) 为每一个组指定条件,像where指定条件一样,也就是说,可以根据你指定的条件来选择行.
             如果你要使用HAVING子句的话,它必须处在GROUP BY子句之后
@@ -1104,4 +1118,24 @@
         (2) 以“dept_id”为分类标志统计各单位的职工人数和工资平均数且工资平均数大于4000
             mysql> select dept_id(部门编号), avg(salary) FROM employee GROUP BY dept_id 
                                                                       HAVING avg(salary) >= 4000;     
+                                                                      
+   
+    4.select distinct 列名 from 表名; 获取不重复的列的数据
+            mysql> select CEILING('123.456')
+            结果:
+                124
+                
+    5..order by : 默认是从小到大(升序)
+            mysql > select * from 表名 order by 列名 desc limit 1; 从大到小(降序)限制一条记录
+            
+            A.可以排序多个字段，如果第一个字段能排出结果，就不会用到第2个字段。比如：
+                mysql> select * from users order by age ,id DESC;
+                因为年龄age有相同的,继续排序就要用到id的降序。
+                
+    6.limit
+        起始地址是从0开始,没写默认为0
+        (1) mysql> select * from users limit 起始地址,输出数据量;
+               SELECT * FROM users LIMIT 3,2;
+               
+        (2) mysql> select * from users limit 输出数据量 offset 起始地址;
 ```
