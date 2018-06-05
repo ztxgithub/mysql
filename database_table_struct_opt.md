@@ -214,6 +214,9 @@
                     2.char类型适合存储短字符串
                     3.char类型适合存储经常更新的字符串
                     
+        longtext:
+            可以不指明长度，这样可以添加任何长度，
+                    
     日期类型：
         datetime类型:
             以 YYYY-MM-DD HH:MM:SS[.fraction] 格式存储日期时间，其中.fraction是代表微妙
