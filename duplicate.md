@@ -152,25 +152,26 @@
 
 ```shell
 
-  MySQL复制过程:
-    1.主数据库将变更写入二进制日志中(MySQL必须开启记录二进制日志功能)
-    2.从数据库读取主数据库的二进制日志的变更信息 写到自身 relay log(中继日志) 中。 要完成这一个过程，需要在从服务器上建立I/O线程，
-      这个I/O线程会跟主服务器建立连接，这时在主服务器上建立转储线程(binlog down),从库上的I/O线程通过这个二进制转储线程读取主库上
-      的二进制日志的事件，I/O线程不会轮询的读取事件，如果I/O线程已经读完所有变更的事件，就进行sleep等待直到主库发送信号，I/O线程才被唤醒
-      继续读主库上的新的二进制日志事件，中继日志的格式和二进制日志格式相同的，我们可以使用mysqlbinlog工具读取中继日志的内容，如何指定从
-      什么位置开始读取，复制可以分为 基于日志点的复制 和 基于GTID的复制
+  MySQL 复制过程:
+    1.主数据库将变更写入二进制日志中(MySQL 必须开启记录二进制日志功能)
+    2.从数据库读取主数据库的二进制日志的变更信息 写到自身 relay log(中继日志) 中。 要完成这一个过程，需要在从服务器上
+      建立 I/O 线程， 这个 I/O 线程会跟主服务器建立连接，这时在主服务器上建立转储线程(binlog down),从库上的 I/O 线程通过
+      这个二进制转储线程读取主库上的二进制日志的事件，I/O 线程不会轮询的读取事件，如果 I/O 线程已经读完所有变更的事件，就进行
+      sleep 等待直到主库发送信号，I/O 线程才被唤醒继续读主库上的新的二进制日志事件，中继日志的格式和二进制日志格式相同的，、
+      我们可以使用 mysqlbinlog 工具读取中继日志的内容，如何指定从什么位置开始读取，复制可以分为 
+      基于日志点的复制 和 基于 GTID 的复制
       
-    3.从服务器重放 relay log中的日志，这个过程由从服务器的SQL线程执行。根据日志格式不同，分为2中执行方式，有
-      基于SQL段的日志(从库上重新执行记录的SQL) 和 基于行的日志(从库上直接应用对数据库行的修改)
+    3.从服务器重放 relay log 中的日志，这个过程由从服务器的 SQL 线程执行。根据日志格式不同，分为2中执行方式，有
+      基于 SQL 段的日志(从库上重新执行记录的SQL) 和 基于行的日志(从库上直接应用对数据库行的修改)
       
       
   基于日志点的复制：
   
        基本原理:
-            在从库服务器中通过读取哪个二进制日志(mysql-binlog.000002)和偏移量进行增量同步，如果指定错误会造成遗漏或则重复，导致
-            主从不一致
+            在从库服务器中通过读取哪个二进制日志(mysql-binlog.000002)和偏移量进行增量同步，如果指定错误会造成遗漏或则重复，
+            导致主从不一致
        1.基于日志点的复制的配置步骤:
-            (1) 在主DB服务器上建立复制账号
+            (1) 在主 DB 服务器上建立复制账号
                     I.创建用户
                         mysql> create user ‘用户名’ @ ‘允许使用的ip网段' identified by '密码'
                         例如
@@ -181,7 +182,8 @@
                         例如
                            mysql> grant replication slave on *.* to 'jame’ @ ‘192.168.3.%';
             (2) 配置主数据库服务器(在/etc/my.cnf)
-                    I.  log-bin=mysql-bin  (用来启动mysql二进制日志，指定mysql二进制日志名字规范 /home/mysql/log/mysql-bin)
+                    I.  log-bin=mysql-bin  (用来启动mysql二进制日志，指定mysql二进制日志名字规范
+                                             /home/mysql/log/mysql-bin)
                     II. server_id = 100 (在所有数据库中要确保唯一)
                     可选：
                         max_binlog_size = 1000M
@@ -189,48 +191,53 @@
                         expire_logs_days = 7
                         sync_binlog = 1
             (3) 配置从数据库服务器
-                    I. log-bin = mysql-bin(在从数据库配置binlog方便以后进行主从迁移，故障转移，进行连路复制)
+                    I. log-bin = mysql-bin(在从数据库配置binlog方便以后进行主从迁移，
+                                           故障转移，进行连路复制)
                     II. server_id = 101
-                    III. relay_log = mysql_relay_bin (一定要进行固定，默认是按主机名字进行命名 /home/mysql/log/mysql-relay-bin)
+                    III. relay_log = mysql_relay_bin (一定要进行固定，默认是按主机名字进行命名
+                                                      /home/mysql/log/mysql-relay-bin)
                     IV. log_slave_update = on [可选] (如果以后要将该从服务器当做主服务器使用则一定要设置为on)
                     V. read_only = on [可选] (安全配置参数)
                     
             (4) 初始化从数据库的数据
-                    在主从服务器配置完成之后，可以准备复制链路，这这之前还要先把主数据库的现有数据拷贝到从服务器中，如果我们的主库中
-                    保留了所有自服务器以来的二进制日志，或则主从服务器都是最近配置的，也可以不进行从服务器的初始化。
-                    不过对于已经运行一段时间的数据库来说，这一步(初始化从数据库的数据)是必须的，就算有二进制日志，如果通过二进制日志
-                    进行同步也会耗费很多时间，所以不如通过主数据库的备份来完成从数据库的初始化这样更有效率。
+                    在主从服务器配置完成之后，可以准备复制链路，这之前还要先把主数据库的现有数据拷贝到从服务器中，
+                    如果我们的主库中保留了所有自服务器以来的二进制日志，或则主从服务器都是最近配置的，也可以不进行从服务器的
+                    初始化。不过对于已经运行一段时间的数据库来说，这一步(初始化从数据库的数据)是必须的，就算有二进制日志，
+                    如果通过二进制日志进行同步也会耗费很多时间，所以不如通过主数据库的备份来完成从数据库的初始化这样更有效率。
                     A.主数据库备份方法:
-                        I.进行逻辑备份，使用这个工具对MySQL进行备份时会把数据库中所有的数据库对象找出来存储为一个存储文件，
-                          为了保证事务的一致性，要加上-single-transaction参数，使用这个工具要对数据库表进行加锁的，这样会
-                          影响数据库的并发性，在一个访问非常频繁的系统中使用这个工具对表进行备份会造成大量阻塞。--master-data参数
-                          在备份时记录主库当前的二进制日志的偏移量信息
+                        I.进行逻辑备份，使用这个工具对 MySQL 进行备份时会把数据库中所有的数据库对象找出来存储为一个
+                          存储文件，为了保证事务的一致性，要加上 -single-transaction 参数，使用这个工具要对数据库表
+                          进行加锁的，这样会影响数据库的并发性，在一个访问非常频繁的系统中使用这个工具对表进行备份会造成大量
+                          阻塞。--master-data参数在备份时记录主库当前的二进制日志的偏移量信息
                           在主数据库服务器上进行备份，并将all.mysql拷贝到 从数据库服务器上
-                          > mysqldump --master-data=2 -single-transaction --triggers --routines --all-databases -uroot
-                            -p >> all.mysql
+                          > mysqldump --master-data=2 -single-transaction --triggers --routines 
+                            --all-databases -uroot -p >> all.mysql
                           
-                        II. 对于innodb存储引擎，能够做到不阻塞，可以在不影响主库的情况下备份从库
+                        II. 对于 innodb 存储引擎，能够做到不阻塞，可以在不影响主库的情况下备份从库
                              但是如果使用了其他的存储引擎(例如MyISAM)，则会造成阻塞情况
-                             --slave-info参数在备份时记录主数据库二进制日志信息以及当前的日志偏移量信息
-                             在线上环境推荐使用xtrabackup，进行热备份
+                             --slave-info 参数在备份时记录主数据库二进制日志信息以及当前的日志偏移量信息
+                             在线上环境推荐使用 xtrabackup，进行热备份
                           > xtrabackup --slave-info
                           
                     B.从数据库服务器初始化
                         > mysql -uroot -p < all.mysql     (将备份数据库文件进行导入)
                           
             (5) 启动复制连路
-                    在从服务器上进行操作，我们可以使用一下SQL语句来告诉备库从主数据库二进制日志的什么位置开始同步数据
-                    参数master_log_file和参数master_log_pos在(4)中数据库备份中找到，也就是备库要从主库什么位置开始同步
-                    二进制日志的文件名和偏移量
+                    在从服务器上进行操作，我们可以使用一下 SQL 语句来告诉备库从主数据库二进制日志的什么位置开始同步数据
+                    参数 master_log_file 和参数 master_log_pos 在(4)中数据库备份中找到，也就是备库要从主库什么位置
+                    开始同步二进制日志的文件名和偏移量
                     在从服务器执行
                     mysql> change master to master_host='主服务器ip',master_user='在主服务器创建用户名',
-                          master_password='对应密码'，master_log_file='mysql_log_file_name',master_log_pos=4;
+                          master_password='对应密码'，master_log_file='mysql_log_file_name',
+                          master_log_pos=4;
                           
                     例如：
                     mysql> change master to master_host='192.168.1.100',master_user='jame',
-                        master_password='123456'，master_log_file='mysql-bin.000003',master_log_pos=1893;
+                           master_password='123456'，master_log_file='mysql-bin.000003',
+                           master_log_pos=1893;
                         
-                        其中master_log_file='mysql-bin.000003',master_log_pos=1893;可以查看all.mysql(备份文件)的内容
+                        其中master_log_file='mysql-bin.000003',master_log_pos=1893;
+                        可以查看all.mysql(备份文件)的内容
                     
                           
             (6) 查看复制连路配置
@@ -240,30 +247,32 @@
                     
        2.基于日志点的复制的优缺点:
             优点：
-                (1) 是MySQL最早支持的复制技术，Bug相对较少
-                (2) 对SQL查询没有任何限制（特别是基于行的复制，对所有SQL语句没有任何要求）
+                (1) 是 MySQL 最早支持的复制技术，Bug 相对较少
+                (2) 对 SQL 查询没有任何限制（特别是基于行的复制，对所有SQL语句没有任何要求）
                 (3) 故障处理比较容易(网上资料较多)
                 
             缺点:
-                (1) 故障转移时重新获取新的主数据库的日志点信息比较困难，这在一主多从尤其困难，如果主库发生宕机，我们要从多个从库中
-                    找出主库，而其他的从库要对新的主库进行重新同步，由于每一个服务器的二进制日志文件都是独立存在的，所以很难找到
-                    其他从库应该和新的主库进行同步的日志点，这一点在后面进行高可用部署时会显得非常重要
+                (1) 故障转移时重新获取新的主数据库的日志点信息比较困难，这在一主多从尤其困难，如果主库发生宕机，
+                    我们要从多个从库中找出主库，而其他的从库要对新的主库进行重新同步，由于每一个服务器的二进制日志文件都是
+                    独立存在的，所以很难找到其他从库应该和新的主库进行同步的日志点，这一点在后面进行高可用部署时会
+                    显得非常重要
                     
                     
-  基于GTID复制：
+  基于 GTID 复制：
         1.基本原理:
-            从库服务器告诉主是服务器以及执行完事务的GTID(全局事务 ID (Global Transaction ID, GTID)）值,然后主库会把所有从库上没有
-            执行的事务发送到从库上，使用GTID可以保证同一事务只在指定的从库执行一次
-        2.GTID概念:
-            GTID即全局事务ID，其保证为每一个在主数据库上提交的事务在复制集群中可以生成一个唯一的ID
-            GTID=source_id:transaction_id ,其source_id是server_uuid(确保每一个事务唯一)，
-                                           transaction_id是自增序列(在主库上执行的第几个事务)
-        3.基于GTID复制的配置步骤:
-            (1) 在主DB服务器上建立复制账号(与基于日志点操作一致)
-                    需要注意的是一定不能在从服务器建立相同的账号，因为GTID复制会把所有主服务器上的事务都同步到从服务器上去，所以
-                    在从服务上手动创建账号，在复制连路是会发生错误
+            从库服务器告诉主是服务器以及执行完事务的 GTID(全局事务 ID (Global Transaction ID, GTID)）值,
+            然后主库会把所有从库上没有执行的事务发送到从库上，使用 GTID 可以保证同一事务只在指定的从库执行一次
+        2.GTID 概念:
+            GTID 即全局事务 ID，其保证为每一个在主数据库上提交的事务在复制集群中可以生成一个唯一的ID
+            GTID=source_id:transaction_id ,其 source_id 是 server_uuid (确保每一个事务唯一)，
+                                           transaction_id 是自增序列(在主库上执行的第几个事务)
+        3.基于 GTID 复制的配置步骤:
+            (1) 在主 DB 服务器上建立复制账号(与基于日志点操作一致)
+                    需要注意的是一定不能在从服务器建立相同的账号，因为 GTID 复制会把所有主服务器上的事务都同步到从服务器上去，
+                    所以在从服务上手动创建账号，在复制连路是会发生错误
             (2) 配置主数据库服务器(在/etc/my.cnf)修改完后需要重启MySQL服务器
-                     I. log-bin=mysql-bin  (用来启动mysql二进制日志，指定mysql二进制日志名字规范 /home/mysql/log/mysql-bin)
+                     I. log-bin=mysql-bin  (用来启动mysql二进制日志，指定mysql二进制日志名字规范 
+                                             /home/mysql/log/mysql-bin)
                      II. server_id = 100 (在所有数据库中要确保唯一) 
                      III. gtid_mode = on (决定了是否启动GTID模式)
                      IV. enforce-gtid-consiste (强制GTID的一致性,用于启动GTID后事务的安全)
@@ -274,22 +283,23 @@
                      
             (3) 配置从数据库服务器(修改完后需要重启MySQL服务器)
                      A. server_id = 101
-                     B. relay_log = mysql_relay_bin (一定要进行固定，默认是按主机名字进行命名 /home/mysql/log/mysql-relay-bin)
-                     C. gtid_mode = on (决定了是否启动GTID模式)
-                     D. enforce-gtid-consiste (强制GTID的一致性,用于启动GTID后事务的安全)
+                     B. relay_log = mysql_relay_bin (一定要进行固定，默认是按主机名字进行命名
+                                                     /home/mysql/log/mysql-relay-bin)
+                     C. gtid_mode = on (决定了是否启动 GTID 模式)
+                     D. enforce-gtid-consiste (强制 GTID 的一致性,用于启动 GTID 后事务的安全)
                      推荐使用
                      E. log-slave-updates = on
                      F. read_only = on [可选] (安全配置参数)
                      G. master_info_repository = TABLE
                      H. relay_log_info_repository = TABLE 
-                     (master_info_repository和relay_log_info_repository这2个参数指定了从服务器连接主服务器的信息以及中继日志信息
-                      默认是存储在文件中，设置该参数将信息保存在表中)
+                     (master_info_repository和relay_log_info_repository这 2 个参数指定了从服务器连接主服务器
+                      的信息以及中继日志信息 默认是存储在文件中，设置该参数将信息保存在表中)
                       
             (4) 初始化从数据库的数据(方法和基于日志点操作一致)
-                    不同的是记录备份时最后的事务GTID值
+                    不同的是记录备份时最后的事务 GTID 值
                     
-            (5) 启动基于GTID的复制
-                     参数master_auto_position是告诉MySQL是使用GTID复制
+            (5) 启动基于 GTID 的复制
+                     参数 master_auto_position 是告诉 MySQL 是使用 GTID 复制
                      > change master to master_host='主服务器ip',master_user='在主服务器创建用户名',
                        master_password='对应密码'，master_auto_position=1;
                        
@@ -301,18 +311,19 @@
                      
         2.基于GTID的复制的优缺点:
             优点：
-                (1) 可以很方便进行故障转移，这是因为GTID的全局唯一的事务标识符，我们根据GTID就会知道哪些事务是没有在从库中执行的，
-                    那么在进行故障转移时对多个从服务器也不用通过新的二进制日志偏移量进行同步
-                (2) 从库不会丢失主库上的任何修改，因为使用了log-slave-updates(这要保证主库上没有删除二进制日志文件)
+                (1) 可以很方便进行故障转移，这是因为 GTID 的全局唯一的事务标识符，我们根据 GTID 就会知道哪些事务是没有
+                    在从库中执行的，那么在进行故障转移时对多个从服务器也不用通过新的二进制日志偏移量进行同步
+                (2) 从库不会丢失主库上的任何修改，因为使用了 log-slave-updates(这要保证主库上没有删除二进制日志文件)
                 
             缺点:
-                (1) 故障处理复杂，比如对于在从库上出现了重复主键的错误，之前我们在保证主从数据没有差异的情况下直接在从库上跳过这个错误
-                    就可以了，但是在使用基于GTID复制后无法简单得处理，我们必须要通过在从库上插入空事务的方式才能跳过这种错误
-                (2) 对执行的SQL有一定的限制，包括 在事务中使用create temporary table 建立临时表    
+                (1) 故障处理复杂，比如对于在从库上出现了重复主键的错误，之前我们在保证主从数据没有差异的情况下直接在
+                    从库上跳过这个错误就可以了，但是在使用基于 GTID 复制后无法简单得处理，我们必须要通过在从库上插入
+                    空事务的方式才能跳过这种错误
+                (2) 对执行的 SQL 有一定的限制，包括 在事务中使用create temporary table 建立临时表    
                                 
                                 
   选择复制模式要考虑的问题
-        1.使用的MySQL版本，基于GTID复制是在MySQL5.6以后
+        1.使用的MySQL版本，基于 GTID 复制是在MySQL5.6以后
         2.复制架构及主从切换的方式，基于GTID复制在主从切换更加方便，特别是在一主多从的架构中，不需要担心日志偏移量问题
         3.所使用的高可用管理组件，是否支持主从复制
 ```
